@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:16
+    container_name: vcs-postgres
+
+    environment:
+      POSTGRES_DB: vsc_sap_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - vcs_pgdata:/var/lib/postgresql/data
+
+volumes:
+  vcs_pgdata:
