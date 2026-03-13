@@ -20,7 +20,7 @@ public class TestControllerTest {
     @Test
     void testEndpointReturnsRunningMessage() throws Exception {
         mvc.perform(get("/test"))
-           .andExpect(status().isOk())
-           .andExpect(content().string("Project is running"));
+                .andExpect(status().isOk())
+                .andExpect(content().string("Project is running"));
     }
 }
