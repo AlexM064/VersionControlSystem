@@ -21,6 +21,6 @@ public class TestControllerIntegrationTest {
     void testEndpointReturnsRunningMessage() throws Exception {
         mockMvc.perform(get("/test"))
                .andExpect(status().isOk())
-               .andExpect(content().string("Project is running"));
+               .andExpect(content().string("project is running"));
     }
 }
