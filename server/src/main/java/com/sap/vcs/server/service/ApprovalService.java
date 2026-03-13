@@ -4,6 +4,7 @@ import com.sap.vcs.server.entity.Approval;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.entity.enums.ApprovalDecision;
+import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
@@ -28,10 +29,12 @@ public class ApprovalService {
 
     public Approval approve(Integer versionId, Integer reviewerId) {
         DocumentVersion version = versionRepository.findById(versionId)
-                .orElseThrow(() -> new RuntimeException("Version not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + versionId));
 
         User reviewer = userRepository.findById(reviewerId)
-                .orElseThrow(() -> new RuntimeException("Reviewer not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Reviewer not found with id: " + reviewerId));
 
         Approval approval = approvalRepository.findByVersionAndReviewer(version, reviewer)
                 .orElseGet(Approval::new);
@@ -46,10 +49,12 @@ public class ApprovalService {
 
     public Approval reject(Integer versionId, Integer reviewerId) {
         DocumentVersion version = versionRepository.findById(versionId)
-                .orElseThrow(() -> new RuntimeException("Version not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + versionId));
 
         User reviewer = userRepository.findById(reviewerId)
-                .orElseThrow(() -> new RuntimeException("Reviewer not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Reviewer not found with id: " + reviewerId));
 
         Approval approval = approvalRepository.findByVersionAndReviewer(version, reviewer)
                 .orElseGet(Approval::new);

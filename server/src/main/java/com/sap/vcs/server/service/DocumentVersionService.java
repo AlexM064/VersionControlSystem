@@ -1,7 +1,10 @@
 package com.sap.vcs.server.service;
 
+import com.sap.vcs.server.dto.DocumentVersionRequestDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
+import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import org.springframework.stereotype.Service;
@@ -21,25 +24,42 @@ public class DocumentVersionService {
         this.documentRepository = documentRepository;
     }
 
-    public DocumentVersion createVersion(Integer documentId, DocumentVersion version) {
-
+    public DocumentVersionResponseDto createVersion(Integer documentId, DocumentVersionRequestDto request) {
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Document not found with id: " + documentId));
 
         Integer versionNumber = versionRepository.countByDocument(document) + 1;
 
-        version.setVersionNumber(versionNumber);
+        DocumentVersion version = new DocumentVersion();
         version.setDocument(document);
+        version.setVersionNumber(versionNumber);
+        version.setContent(request.getContent());
+        version.setMessage(request.getMessage());
 
-        return versionRepository.save(version);
+        DocumentVersion savedVersion = versionRepository.save(version);
+        return mapToResponse(savedVersion);
     }
 
-    public List<DocumentVersion> getVersions(Integer documentId) {
-
+    public List<DocumentVersionResponseDto> getVersions(Integer documentId) {
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Document not found with id: " + documentId));
 
-        return versionRepository.findByDocument(document);
+        return versionRepository.findByDocument(document)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
 
+    private DocumentVersionResponseDto mapToResponse(DocumentVersion version) {
+        return new DocumentVersionResponseDto(
+                version.getId(),
+                version.getDocument().getId(),
+                version.getVersionNumber(),
+                version.getContent(),
+                version.getMessage(),
+                version.getCreatedAt()
+        );
     }
 }
