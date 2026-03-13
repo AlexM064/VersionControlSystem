@@ -5,14 +5,14 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
+@   Entity
 @Table(name = "document_versions",
        uniqueConstraints = @UniqueConstraint(columnNames = {"document_id", "version_number"}))
 public class DocumentVersion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "document_id")
@@ -47,11 +47,11 @@ public class DocumentVersion {
 
     // getters & setters omitted for brevity
 
-    public Long getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
