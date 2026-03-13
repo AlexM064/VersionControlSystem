@@ -1,7 +1,9 @@
 package com.sap.vcs.server.controller;
 
-import com.sap.vcs.server.entity.Document;
+import com.sap.vcs.server.dto.DocumentRequestDto;
+import com.sap.vcs.server.dto.DocumentResponseDto;
 import com.sap.vcs.server.service.DocumentService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,17 +19,17 @@ public class DocumentController {
     }
 
     @PostMapping
-    public Document createDocument(@RequestBody Document document) {
-        return documentService.createDocument(document);
+    public DocumentResponseDto createDocument(@Valid @RequestBody DocumentRequestDto request) {
+        return documentService.createDocument(request);
     }
 
     @GetMapping
-    public List<Document> getAllDocuments() {
+    public List<DocumentResponseDto> getAllDocuments() {
         return documentService.getAllDocuments();
     }
 
     @GetMapping("/{id}")
-    public Document getDocumentById(@PathVariable Integer id) {
+    public DocumentResponseDto getDocumentById(@PathVariable Integer id) {
         return documentService.getDocumentById(id);
     }
 }
