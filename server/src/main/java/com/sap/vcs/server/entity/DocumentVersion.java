@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@   Entity
+@Entity
 @Table(name = "document_versions",
        uniqueConstraints = @UniqueConstraint(columnNames = {"document_id", "version_number"}))
 public class DocumentVersion {
