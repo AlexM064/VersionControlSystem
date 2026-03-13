@@ -4,9 +4,11 @@ services:
     container_name: vcs-postgres
 
     environment:
-      POSTGRES_DB: vsc_sap_db
+      POSTGRES_DB: vcs_sap_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+      TZ: Europe/Sofia
+      PGTZ: Europe/Sofia
 
     ports:
       - "5433:5432"
