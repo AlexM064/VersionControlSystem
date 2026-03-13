@@ -1,10 +1,14 @@
 package com.sap.vcs.server.repository;
 
+import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
-@Repository
-public interface DocumentVersionRepository extends JpaRepository<DocumentVersion, Integer> {
+import java.util.List;
+
+public interface DocumentVersionRepository
+        extends JpaRepository<DocumentVersion, Integer> {
+
+    List<DocumentVersion> findByDocument(Document document);
+    Integer countByDocument(Document document);
 }
-
