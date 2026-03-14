@@ -1,5 +1,6 @@
 package com.sap.vcs.server.service;
 
+import com.sap.vcs.server.dto.ApprovalResponseDto;
 import com.sap.vcs.server.entity.Approval;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
@@ -27,7 +28,7 @@ public class ApprovalService {
         this.userRepository = userRepository;
     }
 
-    public Approval approve(Integer versionId, Integer reviewerId) {
+    public ApprovalResponseDto approve(Integer versionId, Integer reviewerId) {
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
@@ -44,10 +45,11 @@ public class ApprovalService {
         approval.setDecision(ApprovalDecision.APPROVED);
         approval.setDecidedAt(LocalDateTime.now());
 
-        return approvalRepository.save(approval);
+        Approval savedApproval = approvalRepository.save(approval);
+        return mapToResponse(savedApproval);
     }
 
-    public Approval reject(Integer versionId, Integer reviewerId) {
+    public ApprovalResponseDto reject(Integer versionId, Integer reviewerId) {
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
@@ -64,6 +66,18 @@ public class ApprovalService {
         approval.setDecision(ApprovalDecision.REJECTED);
         approval.setDecidedAt(LocalDateTime.now());
 
-        return approvalRepository.save(approval);
+        Approval savedApproval = approvalRepository.save(approval);
+        return mapToResponse(savedApproval);
+    }
+
+    private ApprovalResponseDto mapToResponse(Approval approval) {
+        return new ApprovalResponseDto(
+                approval.getId(),
+                approval.getVersion() != null ? approval.getVersion().getId() : null,
+                approval.getReviewer() != null ? approval.getReviewer().getId() : null,
+                approval.getDecision() != null ? approval.getDecision().name() : null,
+                approval.getComment(),
+                approval.getDecidedAt()
+        );
     }
 }

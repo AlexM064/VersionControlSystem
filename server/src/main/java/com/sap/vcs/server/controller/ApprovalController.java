@@ -1,6 +1,6 @@
 package com.sap.vcs.server.controller;
 
-import com.sap.vcs.server.entity.Approval;
+import com.sap.vcs.server.dto.ApprovalResponseDto;
 import com.sap.vcs.server.service.ApprovalService;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,14 +15,14 @@ public class ApprovalController {
     }
 
     @PostMapping("/{id}/approve")
-    public Approval approve(
+    public ApprovalResponseDto approve(
             @PathVariable Integer id,
             @RequestParam Integer reviewerId) {
         return approvalService.approve(id, reviewerId);
     }
 
     @PostMapping("/{id}/reject")
-    public Approval reject(
+    public ApprovalResponseDto reject(
             @PathVariable Integer id,
             @RequestParam Integer reviewerId) {
         return approvalService.reject(id, reviewerId);
