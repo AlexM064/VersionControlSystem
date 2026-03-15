@@ -1,36 +1,36 @@
 package com.sap.vcs.server.dto;
 
-public class DocumentResponseDto {
+public class PublishDocumentResponseDto {
 
-    private Integer id;
+    private Integer documentId;
     private String title;
-    private String description;
     private String status;
     private Integer publishedVersionId;
+    private Integer publishedVersionNumber;
 
-    public DocumentResponseDto() {
+    public PublishDocumentResponseDto() {
     }
 
-    public DocumentResponseDto(
-            Integer id,
+    public PublishDocumentResponseDto(
+            Integer documentId,
             String title,
-            String description,
             String status,
-            Integer publishedVersionId
+            Integer publishedVersionId,
+            Integer publishedVersionNumber
     ) {
-        this.id = id;
+        this.documentId = documentId;
         this.title = title;
-        this.description = description;
         this.status = status;
         this.publishedVersionId = publishedVersionId;
+        this.publishedVersionNumber = publishedVersionNumber;
     }
 
-    public Integer getId() {
-        return id;
+    public Integer getDocumentId() {
+        return documentId;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void setDocumentId(Integer documentId) {
+        this.documentId = documentId;
     }
 
     public String getTitle() {
@@ -39,14 +39,6 @@ public class DocumentResponseDto {
 
     public void setTitle(String title) {
         this.title = title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
     }
 
     public String getStatus() {
@@ -63,5 +55,13 @@ public class DocumentResponseDto {
 
     public void setPublishedVersionId(Integer publishedVersionId) {
         this.publishedVersionId = publishedVersionId;
+    }
+
+    public Integer getPublishedVersionNumber() {
+        return publishedVersionNumber;
+    }
+
+    public void setPublishedVersionNumber(Integer publishedVersionNumber) {
+        this.publishedVersionNumber = publishedVersionNumber;
     }
 }

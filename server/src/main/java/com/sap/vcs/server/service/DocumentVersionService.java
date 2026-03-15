@@ -2,11 +2,14 @@ package com.sap.vcs.server.service;
 
 import com.sap.vcs.server.dto.DocumentVersionRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.dto.PublishDocumentResponseDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
+import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,7 +22,8 @@ public class DocumentVersionService {
 
     public DocumentVersionService(
             DocumentVersionRepository versionRepository,
-            DocumentRepository documentRepository) {
+            DocumentRepository documentRepository
+    ) {
         this.versionRepository = versionRepository;
         this.documentRepository = documentRepository;
     }
@@ -29,11 +33,14 @@ public class DocumentVersionService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Document not found with id: " + documentId));
 
-        Integer versionNumber = versionRepository.countByDocument(document) + 1;
+        Integer nextVersionNumber = versionRepository
+                .findTopByDocumentOrderByVersionNumberDesc(document)
+                .map(lastVersion -> lastVersion.getVersionNumber() + 1)
+                .orElse(1);
 
         DocumentVersion version = new DocumentVersion();
         version.setDocument(document);
-        version.setVersionNumber(versionNumber);
+        version.setVersionNumber(nextVersionNumber);
         version.setContent(request.getContent());
         version.setMessage(request.getMessage());
 
@@ -46,10 +53,33 @@ public class DocumentVersionService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Document not found with id: " + documentId));
 
-        return versionRepository.findByDocument(document)
+        return versionRepository.findByDocumentOrderByVersionNumberAsc(document)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    @Transactional
+    public PublishDocumentResponseDto publishVersion(Integer versionId) {
+        DocumentVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + versionId));
+
+        Document document = version.getDocument();
+        document.setPublishedVersion(version);
+        document.setStatus(DocumentStatus.PUBLISHED);
+
+        Document savedDocument = documentRepository.save(document);
+
+        return new PublishDocumentResponseDto(
+                savedDocument.getId(),
+                savedDocument.getTitle(),
+                savedDocument.getStatus() != null ? savedDocument.getStatus().name() : null,
+                savedDocument.getPublishedVersion() != null ? savedDocument.getPublishedVersion().getId() : null,
+                savedDocument.getPublishedVersion() != null
+                        ? savedDocument.getPublishedVersion().getVersionNumber()
+                        : null
+        );
     }
 
     private DocumentVersionResponseDto mapToResponse(DocumentVersion version) {

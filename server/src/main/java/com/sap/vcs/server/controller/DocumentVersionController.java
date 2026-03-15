@@ -21,7 +21,8 @@ public class DocumentVersionController {
     @PostMapping
     public DocumentVersionResponseDto createVersion(
             @PathVariable Integer documentId,
-            @Valid @RequestBody DocumentVersionRequestDto request) {
+            @Valid @RequestBody DocumentVersionRequestDto request
+    ) {
         return versionService.createVersion(documentId, request);
     }
 
