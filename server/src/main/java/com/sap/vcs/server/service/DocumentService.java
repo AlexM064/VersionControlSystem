@@ -3,6 +3,7 @@ package com.sap.vcs.server.service;
 import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
 import com.sap.vcs.server.dto.DocumentRequestDto;
 import com.sap.vcs.server.dto.DocumentResponseDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
@@ -81,6 +82,20 @@ public class DocumentService {
                 .toList();
     }
 
+    public DocumentVersionResponseDto getPublishedVersion(Integer id) {
+        Document document = documentRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Document not found with id: " + id));
+
+        DocumentVersion publishedVersion = document.getPublishedVersion();
+
+        if (publishedVersion == null) {
+            throw new ResourceNotFoundException("No published version found for document id: " + id);
+        }
+
+        return mapToVersionResponse(publishedVersion);
+    }
+
     private DocumentHistoryResponseDto mapToHistoryResponse(DocumentVersion version, Integer publishedVersionId) {
         return new DocumentHistoryResponseDto(
                 version.getId(),
@@ -88,6 +103,17 @@ public class DocumentService {
                 version.getMessage(),
                 version.getCreatedAt(),
                 publishedVersionId != null && publishedVersionId.equals(version.getId())
+        );
+    }
+
+    private DocumentVersionResponseDto mapToVersionResponse(DocumentVersion version) {
+        return new DocumentVersionResponseDto(
+                version.getId(),
+                version.getDocument().getId(),
+                version.getVersionNumber(),
+                version.getContent(),
+                version.getMessage(),
+                version.getCreatedAt()
         );
     }
 

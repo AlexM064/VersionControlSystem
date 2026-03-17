@@ -3,6 +3,7 @@ package com.sap.vcs.server.controller;
 import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
 import com.sap.vcs.server.dto.DocumentRequestDto;
 import com.sap.vcs.server.dto.DocumentResponseDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.service.DocumentService;
 import jakarta.validation.Valid;
@@ -45,5 +46,10 @@ public class DocumentController {
     @GetMapping("/{id}/history")
     public List<DocumentHistoryResponseDto> getDocumentHistory(@PathVariable Integer id) {
         return documentService.getDocumentHistory(id);
+    }
+
+    @GetMapping("/{id}/published-version")
+    public DocumentVersionResponseDto getPublishedVersion(@PathVariable Integer id) {
+        return documentService.getPublishedVersion(id);
     }
 }
