@@ -5,8 +5,11 @@ import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.dto.PublishDocumentResponseDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
+import com.sap.vcs.server.entity.enums.ApprovalDecision;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
+import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
+import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import jakarta.transaction.Transactional;
@@ -19,13 +22,16 @@ public class DocumentVersionService {
 
     private final DocumentVersionRepository versionRepository;
     private final DocumentRepository documentRepository;
+    private final ApprovalRepository approvalRepository;
 
     public DocumentVersionService(
             DocumentVersionRepository versionRepository,
-            DocumentRepository documentRepository
+            DocumentRepository documentRepository,
+            ApprovalRepository approvalRepository
     ) {
         this.versionRepository = versionRepository;
         this.documentRepository = documentRepository;
+        this.approvalRepository = approvalRepository;
     }
 
     public DocumentVersionResponseDto createVersion(Integer documentId, DocumentVersionRequestDto request) {
@@ -65,6 +71,8 @@ public class DocumentVersionService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
+        validatePublishRules(version);
+
         return applyPublishedVersion(version);
     }
 
@@ -75,6 +83,30 @@ public class DocumentVersionService {
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
         return applyPublishedVersion(version);
+    }
+
+    private void validatePublishRules(DocumentVersion version) {
+        boolean hasApprovedDecision = approvalRepository.existsByVersionAndDecision(
+                version,
+                ApprovalDecision.APPROVED
+        );
+
+        if (!hasApprovedDecision) {
+            throw new BusinessRuleViolationException(
+                    "Cannot publish version without at least one APPROVED decision"
+            );
+        }
+
+        boolean hasRejectedDecision = approvalRepository.existsByVersionAndDecision(
+                version,
+                ApprovalDecision.REJECTED
+        );
+
+        if (hasRejectedDecision) {
+            throw new BusinessRuleViolationException(
+                    "Cannot publish version because it has a REJECTED decision"
+            );
+        }
     }
 
     private PublishDocumentResponseDto applyPublishedVersion(DocumentVersion version) {
