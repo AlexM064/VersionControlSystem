@@ -18,4 +18,9 @@ public class VersionWorkflowController {
     public PublishDocumentResponseDto publishVersion(@PathVariable Integer versionId) {
         return documentVersionService.publishVersion(versionId);
     }
+
+    @PostMapping("/{versionId}/rollback")
+    public PublishDocumentResponseDto rollbackVersion(@PathVariable Integer versionId) {
+        return documentVersionService.rollbackVersion(versionId);
+    }
 }
