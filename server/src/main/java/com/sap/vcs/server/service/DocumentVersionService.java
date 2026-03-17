@@ -65,6 +65,19 @@ public class DocumentVersionService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
+        return applyPublishedVersion(version);
+    }
+
+    @Transactional
+    public PublishDocumentResponseDto rollbackVersion(Integer versionId) {
+        DocumentVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + versionId));
+
+        return applyPublishedVersion(version);
+    }
+
+    private PublishDocumentResponseDto applyPublishedVersion(DocumentVersion version) {
         Document document = version.getDocument();
         document.setPublishedVersion(version);
         document.setStatus(DocumentStatus.PUBLISHED);
