@@ -9,6 +9,7 @@ import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -28,6 +29,7 @@ public class ApprovalService {
         this.userRepository = userRepository;
     }
 
+    @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
     public ApprovalResponseDto approve(Integer versionId, Integer reviewerId) {
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(() ->
@@ -49,6 +51,7 @@ public class ApprovalService {
         return mapToResponse(savedApproval);
     }
 
+    @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
     public ApprovalResponseDto reject(Integer versionId, Integer reviewerId) {
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(() ->
