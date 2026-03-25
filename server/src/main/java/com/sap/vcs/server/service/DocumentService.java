@@ -14,6 +14,7 @@ import com.sap.vcs.server.specification.DocumentSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,6 +31,7 @@ public class DocumentService {
         this.documentVersionRepository = documentVersionRepository;
     }
 
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public DocumentResponseDto createDocument(DocumentRequestDto request) {
         Document document = new Document();
         document.setTitle(request.getTitle());
@@ -39,6 +41,7 @@ public class DocumentService {
         return mapToResponse(savedDocument);
     }
 
+    @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     public Page<DocumentResponseDto> getAllDocuments(
             String title,
             DocumentStatus status,
@@ -59,6 +62,7 @@ public class DocumentService {
                 .map(this::mapToResponse);
     }
 
+    @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     public DocumentResponseDto getDocumentById(Integer id) {
         Document document = documentRepository.findById(id)
                 .orElseThrow(() ->
@@ -67,6 +71,7 @@ public class DocumentService {
         return mapToResponse(document);
     }
 
+    @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     public List<DocumentHistoryResponseDto> getDocumentHistory(Integer id) {
         Document document = documentRepository.findById(id)
                 .orElseThrow(() ->
@@ -82,6 +87,7 @@ public class DocumentService {
                 .toList();
     }
 
+    @PreAuthorize("hasAnyRole('READER', 'AUTHOR', 'REVIEWER', 'ADMIN')")
     public DocumentVersionResponseDto getPublishedVersion(Integer id) {
         Document document = documentRepository.findById(id)
                 .orElseThrow(() ->

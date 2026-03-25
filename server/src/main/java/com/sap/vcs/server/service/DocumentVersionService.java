@@ -13,6 +13,7 @@ import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -34,6 +35,7 @@ public class DocumentVersionService {
         this.approvalRepository = approvalRepository;
     }
 
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public DocumentVersionResponseDto createVersion(Integer documentId, DocumentVersionRequestDto request) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() ->
@@ -54,6 +56,7 @@ public class DocumentVersionService {
         return mapToResponse(savedVersion);
     }
 
+    @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     public List<DocumentVersionResponseDto> getVersions(Integer documentId) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() ->
@@ -66,6 +69,7 @@ public class DocumentVersionService {
     }
 
     @Transactional
+    @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
     public PublishDocumentResponseDto publishVersion(Integer versionId) {
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(() ->
@@ -77,6 +81,7 @@ public class DocumentVersionService {
     }
 
     @Transactional
+    @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
     public PublishDocumentResponseDto rollbackVersion(Integer versionId) {
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(() ->

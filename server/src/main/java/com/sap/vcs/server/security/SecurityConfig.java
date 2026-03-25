@@ -40,11 +40,10 @@ public class SecurityConfig {
                         .accessDeniedHandler(restAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
                         .requestMatchers(HttpMethod.GET, "/test").permitAll()
 
-                        .requestMatchers(HttpMethod.POST, "/documents")
-                        .hasAnyRole("AUTHOR", "ADMIN")
-
+                        // Document endpoints
                         .requestMatchers(HttpMethod.GET, "/documents")
                         .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
 
@@ -60,9 +59,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/documents/*/published-version")
                         .hasAnyRole("READER", "AUTHOR", "REVIEWER", "ADMIN")
 
+                        .requestMatchers(HttpMethod.POST, "/documents")
+                        .hasAnyRole("AUTHOR", "ADMIN")
+
+                        // Document version endpoints
+                        .requestMatchers(HttpMethod.GET, "/documents/*/versions")
+                        .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
+
                         .requestMatchers(HttpMethod.POST, "/documents/*/versions")
                         .hasAnyRole("AUTHOR", "ADMIN")
 
+                        // Workflow endpoints
                         .requestMatchers(HttpMethod.POST, "/versions/*/approve")
                         .hasAnyRole("REVIEWER", "ADMIN")
 
