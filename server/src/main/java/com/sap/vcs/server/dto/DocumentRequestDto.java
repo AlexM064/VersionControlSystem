@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 public class DocumentRequestDto {
 
     @NotBlank(message = "Title is required")
-    @Size(max = 255, message = "Title must be at most 255 characters")
+    @Size(min = 3, max = 255, message = "Title must be between 3 and 255 characters")
     private String title;
 
     @Size(max = 5000, message = "Description must be at most 5000 characters")
@@ -20,7 +20,7 @@ public class DocumentRequestDto {
     }
 
     public void setTitle(String title) {
-        this.title = title;
+        this.title = title == null ? null : title.trim();
     }
 
     public String getDescription() {
@@ -28,6 +28,6 @@ public class DocumentRequestDto {
     }
 
     public void setDescription(String description) {
-        this.description = description;
+        this.description = description == null ? null : description.trim();
     }
 }
