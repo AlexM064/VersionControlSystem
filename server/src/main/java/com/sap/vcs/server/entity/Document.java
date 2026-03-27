@@ -2,6 +2,7 @@ package com.sap.vcs.server.entity;
 
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,10 @@ public class Document {
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentVersion> versions = new ArrayList<>();
 
+    @ManyToOne
+    @JoinColumn(name = "published_version_id")
+    private DocumentVersion publishedVersion;
+
     public Document() {
     }
 
@@ -50,8 +55,6 @@ public class Document {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
-    // getters and setters omitted for brevity
 
     public Integer getId() {
         return id;
@@ -115,5 +118,13 @@ public class Document {
 
     public void setVersions(List<DocumentVersion> versions) {
         this.versions = versions;
+    }
+
+    public DocumentVersion getPublishedVersion() {
+        return publishedVersion;
+    }
+
+    public void setPublishedVersion(DocumentVersion publishedVersion) {
+        this.publishedVersion = publishedVersion;
     }
 }
