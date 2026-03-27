@@ -4,6 +4,8 @@ import com.sap.vcs.server.dto.DocumentVersionRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.service.DocumentVersionService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,15 +21,16 @@ public class DocumentVersionController {
     }
 
     @PostMapping
-    public DocumentVersionResponseDto createVersion(
+    public ResponseEntity<DocumentVersionResponseDto> createVersion(
             @PathVariable Integer documentId,
             @Valid @RequestBody DocumentVersionRequestDto request
     ) {
-        return versionService.createVersion(documentId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(versionService.createVersion(documentId, request));
     }
 
     @GetMapping
-    public List<DocumentVersionResponseDto> getVersions(@PathVariable Integer documentId) {
-        return versionService.getVersions(documentId);
+    public ResponseEntity<List<DocumentVersionResponseDto>> getVersions(@PathVariable Integer documentId) {
+        return ResponseEntity.ok(versionService.getVersions(documentId));
     }
 }
