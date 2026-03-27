@@ -92,7 +92,7 @@ class DocumentVersionControllerAuthorizationTest {
         mockMvc.perform(post("/documents/1/versions")
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
     }
 
     @Test
