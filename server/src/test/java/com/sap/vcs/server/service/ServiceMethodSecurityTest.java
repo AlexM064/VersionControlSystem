@@ -2,6 +2,7 @@ package com.sap.vcs.server.service;
 
 import com.sap.vcs.server.dto.DocumentRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionRequestDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.entity.Approval;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
@@ -14,6 +15,7 @@ import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -28,8 +30,11 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
@@ -81,9 +86,15 @@ class ServiceMethodSecurityTest {
         DocumentVersionService documentVersionService(
                 DocumentVersionRepository documentVersionRepository,
                 DocumentRepository documentRepository,
-                ApprovalRepository approvalRepository
+                ApprovalRepository approvalRepository,
+                UserRepository userRepository
         ) {
-            return new DocumentVersionService(documentVersionRepository, documentRepository, approvalRepository);
+            return new DocumentVersionService(
+                    documentVersionRepository,
+                    documentRepository,
+                    approvalRepository,
+                    userRepository
+            );
         }
 
     @Bean
@@ -150,6 +161,10 @@ class ServiceMethodSecurityTest {
         document.setId(1);
         document.setTitle("Spec");
 
+        User author = new User();
+        author.setId(101);
+        author.setUsername("user");
+
         DocumentVersionRequestDto request = new DocumentVersionRequestDto();
         request.setContent("Content");
         request.setMessage("Initial");
@@ -160,13 +175,25 @@ class ServiceMethodSecurityTest {
         savedVersion.setVersionNumber(1);
         savedVersion.setContent("Content");
         savedVersion.setMessage("Initial");
+        savedVersion.setCreatedBy(author);
 
         when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.findById(1)).thenReturn(Optional.of(document));
+        when(MethodSecurityTestConfig.USER_REPOSITORY.findByUsername("user")).thenReturn(Optional.of(author));
         when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findTopByDocumentOrderByVersionNumberDesc(document))
                 .thenReturn(Optional.empty());
         when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.save(any(DocumentVersion.class))).thenReturn(savedVersion);
 
-        assertDoesNotThrow(() -> documentVersionService.createVersion(1, request));
+        DocumentVersionResponseDto response = documentVersionService.createVersion(1, request);
+
+        ArgumentCaptor<DocumentVersion> captor = ArgumentCaptor.forClass(DocumentVersion.class);
+        verify(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY).save(captor.capture());
+
+        DocumentVersion capturedVersion = captor.getValue();
+        assertNotNull(capturedVersion);
+        assertEquals(document, capturedVersion.getDocument());
+        assertEquals(1, capturedVersion.getVersionNumber());
+        assertEquals(author, capturedVersion.getCreatedBy());
+        assertEquals("user", response.getCreatedByUsername());
     }
 
     @Test

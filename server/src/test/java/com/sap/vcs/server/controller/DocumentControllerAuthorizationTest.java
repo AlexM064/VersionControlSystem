@@ -9,6 +9,7 @@ import com.sap.vcs.server.security.CustomUserDetailsService;
 import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
 import com.sap.vcs.server.security.SecurityConfig;
+import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.DocumentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,9 @@ class DocumentControllerAuthorizationTest {
 
     @MockBean
     private CustomUserDetailsService customUserDetailsService;
+
+    @MockBean
+    private JwtService jwtService;
 
     @Test
     @WithMockUser(roles = "AUTHOR")
@@ -136,6 +140,7 @@ class DocumentControllerAuthorizationTest {
                         2,
                         "Published content",
                         "Published version",
+                        "author.local",
                         LocalDateTime.now()
                 ));
 
