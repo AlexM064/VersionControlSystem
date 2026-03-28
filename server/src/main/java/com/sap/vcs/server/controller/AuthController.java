@@ -28,6 +28,9 @@ public class AuthController {
 
     @GetMapping("/me")
     public MeResponseDto me(Authentication authentication) {
+        if (authentication == null) {
+            throw new RuntimeException("Authentication is required");
+        }
         return authService.me(authentication.getName());
     }
 }
