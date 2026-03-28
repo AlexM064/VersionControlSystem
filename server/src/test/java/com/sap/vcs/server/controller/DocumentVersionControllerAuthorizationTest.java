@@ -7,6 +7,7 @@ import com.sap.vcs.server.security.CustomUserDetailsService;
 import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
 import com.sap.vcs.server.security.SecurityConfig;
+import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.DocumentVersionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,12 +48,15 @@ class DocumentVersionControllerAuthorizationTest {
     @MockBean
     private CustomUserDetailsService customUserDetailsService;
 
+    @MockBean
+    private JwtService jwtService;
+
     @Test
     @WithMockUser(roles = "REVIEWER")
     void getVersions_allowsReviewer() throws Exception {
         when(documentVersionService.getVersions(1))
                 .thenReturn(List.of(
-                        new DocumentVersionResponseDto(10, 1, 1, "Content", "Initial", LocalDateTime.now())
+                        new DocumentVersionResponseDto(10, 1, 1, "Content", "Initial", "author.local", LocalDateTime.now())
                 ));
 
         mockMvc.perform(get("/documents/1/versions"))
@@ -86,6 +90,7 @@ class DocumentVersionControllerAuthorizationTest {
                         2,
                         "Updated content",
                         "Revision",
+                        "author.local",
                         LocalDateTime.now()
                 ));
 

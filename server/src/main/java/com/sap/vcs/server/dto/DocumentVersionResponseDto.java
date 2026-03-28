@@ -9,6 +9,7 @@ public class DocumentVersionResponseDto {
     private Integer versionNumber;
     private String content;
     private String message;
+    private String createdByUsername;
     private LocalDateTime createdAt;
 
     public DocumentVersionResponseDto() {
@@ -20,12 +21,14 @@ public class DocumentVersionResponseDto {
             Integer versionNumber,
             String content,
             String message,
+            String createdByUsername,
             LocalDateTime createdAt) {
         this.id = id;
         this.documentId = documentId;
         this.versionNumber = versionNumber;
         this.content = content;
         this.message = message;
+        this.createdByUsername = createdByUsername;
         this.createdAt = createdAt;
     }
 
@@ -47,6 +50,10 @@ public class DocumentVersionResponseDto {
 
     public String getMessage() {
         return message;
+    }
+
+    public String getCreatedByUsername() {
+        return createdByUsername;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -71,6 +78,10 @@ public class DocumentVersionResponseDto {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public void setCreatedByUsername(String createdByUsername) {
+        this.createdByUsername = createdByUsername;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {

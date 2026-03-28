@@ -5,6 +5,7 @@ import com.sap.vcs.server.security.CustomUserDetailsService;
 import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
 import com.sap.vcs.server.security.SecurityConfig;
+import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.ApprovalService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,9 @@ class ApprovalControllerAuthorizationTest {
 
     @MockBean
     private CustomUserDetailsService customUserDetailsService;
+
+    @MockBean
+    private JwtService jwtService;
 
     @Test
     @WithMockUser(roles = "REVIEWER")
