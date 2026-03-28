@@ -1,5 +1,7 @@
 package com.sap.vcs.server.dto;
 
+import com.sap.vcs.server.entity.enums.VersionStatus;
+
 import java.time.LocalDateTime;
 
 public class DocumentVersionResponseDto {
@@ -9,6 +11,7 @@ public class DocumentVersionResponseDto {
     private Integer versionNumber;
     private String content;
     private String message;
+    private VersionStatus status;
     private String createdByUsername;
     private LocalDateTime createdAt;
 
@@ -21,6 +24,7 @@ public class DocumentVersionResponseDto {
             Integer versionNumber,
             String content,
             String message,
+            VersionStatus status,
             String createdByUsername,
             LocalDateTime createdAt) {
         this.id = id;
@@ -28,6 +32,7 @@ public class DocumentVersionResponseDto {
         this.versionNumber = versionNumber;
         this.content = content;
         this.message = message;
+        this.status = status;
         this.createdByUsername = createdByUsername;
         this.createdAt = createdAt;
     }
@@ -50,6 +55,10 @@ public class DocumentVersionResponseDto {
 
     public String getMessage() {
         return message;
+    }
+
+    public VersionStatus getStatus() {
+        return status;
     }
 
     public String getCreatedByUsername() {
@@ -78,6 +87,10 @@ public class DocumentVersionResponseDto {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public void setStatus(VersionStatus status) {
+        this.status = status;
     }
 
     public void setCreatedByUsername(String createdByUsername) {

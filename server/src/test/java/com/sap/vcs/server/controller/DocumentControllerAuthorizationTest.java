@@ -5,6 +5,7 @@ import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
 import com.sap.vcs.server.dto.DocumentRequestDto;
 import com.sap.vcs.server.dto.DocumentResponseDto;
 import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.security.CustomUserDetailsService;
 import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
@@ -140,6 +141,7 @@ class DocumentControllerAuthorizationTest {
                         2,
                         "Published content",
                         "Published version",
+                        VersionStatus.PUBLISHED,
                         "author.local",
                         LocalDateTime.now()
                 ));

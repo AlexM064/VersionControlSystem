@@ -5,6 +5,8 @@ import com.sap.vcs.server.entity.Approval;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.entity.enums.ApprovalDecision;
+import com.sap.vcs.server.entity.enums.VersionStatus;
+import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
@@ -18,20 +20,20 @@ import java.time.LocalDateTime;
 public class ApprovalService {
 
     private final ApprovalRepository approvalRepository;
-    private final DocumentVersionRepository versionRepository;
+    private final DocumentVersionRepository documentVersionRepository;
     private final UserRepository userRepository;
 
     public ApprovalService(ApprovalRepository approvalRepository,
-                           DocumentVersionRepository versionRepository,
+                           DocumentVersionRepository documentVersionRepository,
                            UserRepository userRepository) {
         this.approvalRepository = approvalRepository;
-        this.versionRepository = versionRepository;
+        this.documentVersionRepository = documentVersionRepository;
         this.userRepository = userRepository;
     }
 
     @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
     public ApprovalResponseDto approve(Integer versionId, Integer reviewerId) {
-        DocumentVersion version = versionRepository.findById(versionId)
+        DocumentVersion version = documentVersionRepository.findById(versionId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
@@ -41,19 +43,28 @@ public class ApprovalService {
 
         Approval approval = approvalRepository.findByVersionAndReviewer(version, reviewer)
                 .orElseGet(Approval::new);
+
+        if (version.getStatus() != VersionStatus.IN_REVIEW) {
+            throw new BusinessRuleViolationException(
+                    "Only IN_REVIEW versions can be approved"
+            );
+        }
 
         approval.setVersion(version);
         approval.setReviewer(reviewer);
         approval.setDecision(ApprovalDecision.APPROVED);
         approval.setDecidedAt(LocalDateTime.now());
 
+        version.setStatus(VersionStatus.APPROVED);
+
         Approval savedApproval = approvalRepository.save(approval);
+        documentVersionRepository.save(version);
         return mapToResponse(savedApproval);
     }
 
     @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
     public ApprovalResponseDto reject(Integer versionId, Integer reviewerId) {
-        DocumentVersion version = versionRepository.findById(versionId)
+        DocumentVersion version = documentVersionRepository.findById(versionId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
@@ -64,12 +75,21 @@ public class ApprovalService {
         Approval approval = approvalRepository.findByVersionAndReviewer(version, reviewer)
                 .orElseGet(Approval::new);
 
+        if (version.getStatus() != VersionStatus.IN_REVIEW) {
+            throw new BusinessRuleViolationException(
+                    "Only IN_REVIEW versions can be rejected"
+            );
+        }
+
         approval.setVersion(version);
         approval.setReviewer(reviewer);
         approval.setDecision(ApprovalDecision.REJECTED);
         approval.setDecidedAt(LocalDateTime.now());
 
+        version.setStatus(VersionStatus.REJECTED);
+
         Approval savedApproval = approvalRepository.save(approval);
+        documentVersionRepository.save(version);
         return mapToResponse(savedApproval);
     }
 
