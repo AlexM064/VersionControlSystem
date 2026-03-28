@@ -2,6 +2,7 @@ package com.sap.vcs.server.controller;
 
 import com.sap.vcs.server.dto.PublishDocumentResponseDto;
 import com.sap.vcs.server.service.DocumentVersionService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,12 +16,12 @@ public class VersionWorkflowController {
     }
 
     @PostMapping("/{versionId}/publish")
-    public PublishDocumentResponseDto publishVersion(@PathVariable Integer versionId) {
-        return documentVersionService.publishVersion(versionId);
+    public ResponseEntity<PublishDocumentResponseDto> publishVersion(@PathVariable Integer versionId) {
+        return ResponseEntity.ok(documentVersionService.publishVersion(versionId));
     }
 
     @PostMapping("/{versionId}/rollback")
-    public PublishDocumentResponseDto rollbackVersion(@PathVariable Integer versionId) {
-        return documentVersionService.rollbackVersion(versionId);
+    public ResponseEntity<PublishDocumentResponseDto> rollbackVersion(@PathVariable Integer versionId) {
+        return ResponseEntity.ok(documentVersionService.rollbackVersion(versionId));
     }
 }

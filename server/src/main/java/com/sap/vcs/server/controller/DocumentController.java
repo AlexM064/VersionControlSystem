@@ -7,6 +7,8 @@ import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.service.DocumentService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -25,31 +27,32 @@ public class DocumentController {
     }
 
     @PostMapping
-    public DocumentResponseDto createDocument(@Valid @RequestBody DocumentRequestDto request) {
-        return documentService.createDocument(request);
+    public ResponseEntity<DocumentResponseDto> createDocument(@Valid @RequestBody DocumentRequestDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(documentService.createDocument(request));
     }
 
     @GetMapping
-    public Page<DocumentResponseDto> getAllDocuments(
+    public ResponseEntity<Page<DocumentResponseDto>> getAllDocuments(
             @RequestParam(required = false) String title,
             @RequestParam(required = false) DocumentStatus status,
             @PageableDefault(size = 10, sort = "createdAt") Pageable pageable
     ) {
-        return documentService.getAllDocuments(title, status, pageable);
+        return ResponseEntity.ok(documentService.getAllDocuments(title, status, pageable));
     }
 
     @GetMapping("/{id}")
-    public DocumentResponseDto getDocumentById(@PathVariable Integer id) {
-        return documentService.getDocumentById(id);
+    public ResponseEntity<DocumentResponseDto> getDocumentById(@PathVariable Integer id) {
+        return ResponseEntity.ok(documentService.getDocumentById(id));
     }
 
     @GetMapping("/{id}/history")
-    public List<DocumentHistoryResponseDto> getDocumentHistory(@PathVariable Integer id) {
-        return documentService.getDocumentHistory(id);
+    public ResponseEntity<List<DocumentHistoryResponseDto>> getDocumentHistory(@PathVariable Integer id) {
+        return ResponseEntity.ok(documentService.getDocumentHistory(id));
     }
 
     @GetMapping("/{id}/published-version")
-    public DocumentVersionResponseDto getPublishedVersion(@PathVariable Integer id) {
-        return documentService.getPublishedVersion(id);
+    public ResponseEntity<DocumentVersionResponseDto> getPublishedVersion(@PathVariable Integer id) {
+        return ResponseEntity.ok(documentService.getPublishedVersion(id));
     }
 }
