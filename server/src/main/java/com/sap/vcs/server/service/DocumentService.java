@@ -1,10 +1,6 @@
 package com.sap.vcs.server.service;
 
-import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
-import com.sap.vcs.server.dto.DocumentRequestDto;
-import com.sap.vcs.server.dto.DocumentResponseDto;
-import com.sap.vcs.server.dto.DocumentVersionResponseDto;
-import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
+import com.sap.vcs.server.dto.*;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
