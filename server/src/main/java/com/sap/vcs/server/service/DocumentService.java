@@ -119,6 +119,7 @@ public class DocumentService {
                 version.getVersionNumber(),
                 version.getContent(),
                 version.getMessage(),
+                version.getStatus(),
                 version.getCreatedBy() != null ? version.getCreatedBy().getUsername() : null,
                 version.getCreatedAt()
         );

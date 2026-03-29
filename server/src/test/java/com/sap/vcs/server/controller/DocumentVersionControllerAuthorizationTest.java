@@ -3,6 +3,7 @@ package com.sap.vcs.server.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sap.vcs.server.dto.DocumentVersionRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.security.CustomUserDetailsService;
 import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
@@ -56,7 +57,15 @@ class DocumentVersionControllerAuthorizationTest {
     void getVersions_allowsReviewer() throws Exception {
         when(documentVersionService.getVersions(1))
                 .thenReturn(List.of(
-                        new DocumentVersionResponseDto(10, 1, 1, "Content", "Initial", "author.local", LocalDateTime.now())
+                        new DocumentVersionResponseDto(
+                                10,
+                                1,
+                                1,
+                                "Content",
+                                "Initial",
+                                VersionStatus.DRAFT,
+                                "author.local",
+                                LocalDateTime.now())
                 ));
 
         mockMvc.perform(get("/documents/1/versions"))
@@ -90,6 +99,7 @@ class DocumentVersionControllerAuthorizationTest {
                         2,
                         "Updated content",
                         "Revision",
+                        VersionStatus.DRAFT,
                         "author.local",
                         LocalDateTime.now()
                 ));

@@ -6,6 +6,7 @@ import com.sap.vcs.server.service.DocumentVersionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,10 +15,10 @@ import java.util.List;
 @RequestMapping("/documents/{documentId}/versions")
 public class DocumentVersionController {
 
-    private final DocumentVersionService versionService;
+    private final DocumentVersionService documentVersionService;
 
-    public DocumentVersionController(DocumentVersionService versionService) {
-        this.versionService = versionService;
+    public DocumentVersionController(DocumentVersionService documentVersionService) {
+        this.documentVersionService = documentVersionService;
     }
 
     @PostMapping
@@ -26,11 +27,20 @@ public class DocumentVersionController {
             @Valid @RequestBody DocumentVersionRequestDto request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(versionService.createVersion(documentId, request));
+                .body(documentVersionService.createVersion(documentId, request));
     }
 
     @GetMapping
     public ResponseEntity<List<DocumentVersionResponseDto>> getVersions(@PathVariable Integer documentId) {
-        return ResponseEntity.ok(versionService.getVersions(documentId));
+        return ResponseEntity.ok(documentVersionService.getVersions(documentId));
+    }
+
+    @PostMapping("/{versionId}/submit")
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
+    public DocumentVersionResponseDto submitForReview(
+            @PathVariable Integer documentId,
+            @PathVariable Integer versionId
+    ) {
+        return documentVersionService.submitForReview(versionId);
     }
 }

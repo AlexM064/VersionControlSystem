@@ -8,6 +8,7 @@ import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.entity.enums.ApprovalDecision;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
+import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.ApprovalRepository;
@@ -55,6 +56,7 @@ public class DocumentVersionService {
                 .orElse(1);
 
         DocumentVersion version = new DocumentVersion();
+        version.setStatus(VersionStatus.DRAFT);
         version.setDocument(document);
         version.setVersionNumber(nextVersionNumber);
         version.setContent(request.getContent());
@@ -100,43 +102,29 @@ public class DocumentVersionService {
     }
 
     private void validatePublishRules(DocumentVersion version) {
-        boolean hasApprovedDecision = approvalRepository.existsByVersionAndDecision(
-                version,
-                ApprovalDecision.APPROVED
-        );
-
-        if (!hasApprovedDecision) {
+        if (version.getStatus() != VersionStatus.APPROVED) {
             throw new BusinessRuleViolationException(
-                    "Cannot publish version without at least one APPROVED decision"
-            );
-        }
-
-        boolean hasRejectedDecision = approvalRepository.existsByVersionAndDecision(
-                version,
-                ApprovalDecision.REJECTED
-        );
-
-        if (hasRejectedDecision) {
-            throw new BusinessRuleViolationException(
-                    "Cannot publish version because it has a REJECTED decision"
+                    "Only APPROVED versions can be published"
             );
         }
     }
 
     private PublishDocumentResponseDto applyPublishedVersion(DocumentVersion version) {
         Document document = version.getDocument();
-        document.setPublishedVersion(version);
+
+        version.setStatus(VersionStatus.PUBLISHED);
+        DocumentVersion savedVersion = versionRepository.save(version);
+
+        document.setPublishedVersion(savedVersion);
         document.setStatus(DocumentStatus.PUBLISHED);
 
-        Document savedDocument = documentRepository.save(document);
-
         return new PublishDocumentResponseDto(
-                savedDocument.getId(),
-                savedDocument.getTitle(),
-                savedDocument.getStatus() != null ? savedDocument.getStatus().name() : null,
-                savedDocument.getPublishedVersion() != null ? savedDocument.getPublishedVersion().getId() : null,
-                savedDocument.getPublishedVersion() != null
-                        ? savedDocument.getPublishedVersion().getVersionNumber()
+                document.getId(),
+                document.getTitle(),
+                document.getStatus() != null ? document.getStatus().name() : null,
+                document.getPublishedVersion() != null ? document.getPublishedVersion().getId() : null,
+                document.getPublishedVersion() != null
+                        ? document.getPublishedVersion().getVersionNumber()
                         : null
         );
     }
@@ -148,6 +136,7 @@ public class DocumentVersionService {
                 version.getVersionNumber(),
                 version.getContent(),
                 version.getMessage(),
+                version.getStatus(),
                 version.getCreatedBy() != null ? version.getCreatedBy().getUsername() : null,
                 version.getCreatedAt()
         );
@@ -164,5 +153,25 @@ public class DocumentVersionService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Authenticated user not found with username: " + authentication.getName()
                 ));
+    }
+
+    @Transactional
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
+    public DocumentVersionResponseDto submitForReview(Integer versionId) {
+        DocumentVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + versionId));
+
+        if (version.getStatus() != VersionStatus.DRAFT) {
+            throw new BusinessRuleViolationException(
+                    "Only DRAFT versions can be submitted for review"
+            );
+        }
+
+        version.setStatus(VersionStatus.IN_REVIEW);
+
+        DocumentVersion saved = versionRepository.save(version);
+
+        return mapToResponse(saved);
     }
 }
