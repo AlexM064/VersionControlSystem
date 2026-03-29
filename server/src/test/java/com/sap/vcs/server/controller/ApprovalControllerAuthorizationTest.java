@@ -44,7 +44,7 @@ class ApprovalControllerAuthorizationTest {
     @Test
     @WithMockUser(roles = "REVIEWER")
     void approve_allowsReviewer() throws Exception {
-        when(approvalService.approve(1, 100))
+        when(approvalService.approve(1))
                 .thenReturn(new ApprovalResponseDto(
                         10,
                         1,
@@ -54,30 +54,27 @@ class ApprovalControllerAuthorizationTest {
                         LocalDateTime.now()
                 ));
 
-        mockMvc.perform(post("/versions/1/approve")
-                        .queryParam("reviewerId", "100"))
+        mockMvc.perform(post("/versions/1/approve"))
                 .andExpect(status().isOk());
     }
 
     @Test
     @WithMockUser(roles = "AUTHOR")
     void approve_forbidsAuthor() throws Exception {
-        mockMvc.perform(post("/versions/1/approve")
-                        .queryParam("reviewerId", "100"))
+        mockMvc.perform(post("/versions/1/approve"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void approve_requiresAuthentication() throws Exception {
-        mockMvc.perform(post("/versions/1/approve")
-                        .queryParam("reviewerId", "100"))
+        mockMvc.perform(post("/versions/1/approve"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void reject_allowsAdmin() throws Exception {
-        when(approvalService.reject(1, 100))
+        when(approvalService.reject(1))
                 .thenReturn(new ApprovalResponseDto(
                         11,
                         1,
@@ -87,23 +84,20 @@ class ApprovalControllerAuthorizationTest {
                         LocalDateTime.now()
                 ));
 
-        mockMvc.perform(post("/versions/1/reject")
-                        .queryParam("reviewerId", "100"))
+        mockMvc.perform(post("/versions/1/reject"))
                 .andExpect(status().isOk());
     }
 
     @Test
     @WithMockUser(roles = "READER")
     void reject_forbidsReader() throws Exception {
-        mockMvc.perform(post("/versions/1/reject")
-                        .queryParam("reviewerId", "100"))
+        mockMvc.perform(post("/versions/1/reject"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void reject_requiresAuthentication() throws Exception {
-        mockMvc.perform(post("/versions/1/reject")
-                        .queryParam("reviewerId", "100"))
+        mockMvc.perform(post("/versions/1/reject"))
                 .andExpect(status().isUnauthorized());
     }
 }

@@ -6,7 +6,6 @@ import com.sap.vcs.server.dto.PublishDocumentResponseDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
-import com.sap.vcs.server.entity.enums.ApprovalDecision;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.exception.BusinessRuleViolationException;
@@ -16,6 +15,7 @@ import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -48,7 +48,9 @@ public class DocumentVersionService {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Document not found with id: " + documentId));
+
         User currentUser = getCurrentAuthenticatedUser();
+        validateOwnershipOrAdmin(document, currentUser);
 
         Integer nextVersionNumber = versionRepository
                 .findTopByDocumentOrderByVersionNumberDesc(document)
@@ -153,6 +155,18 @@ public class DocumentVersionService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Authenticated user not found with username: " + authentication.getName()
                 ));
+    }
+
+    private void validateOwnershipOrAdmin(Document document, User user) {
+        boolean isAdmin = user.getRoles() != null &&
+                user.getRoles().stream().anyMatch(role -> "ADMIN".equalsIgnoreCase(role.getName()));
+
+        boolean isOwner = document.getOwner() != null &&
+                document.getOwner().getId().equals(user.getId());
+
+        if (!isAdmin && !isOwner) {
+            throw new AccessDeniedException("You do not have permission to create versions for this document");
+        }
     }
 
     @Transactional

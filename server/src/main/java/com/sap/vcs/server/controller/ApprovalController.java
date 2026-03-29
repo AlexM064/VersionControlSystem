@@ -16,16 +16,12 @@ public class ApprovalController {
     }
 
     @PostMapping("/{id}/approve")
-    public ResponseEntity<ApprovalResponseDto> approve(
-            @PathVariable Integer id,
-            @RequestParam Integer reviewerId) {
-        return ResponseEntity.ok(approvalService.approve(id, reviewerId));
+    public ResponseEntity<ApprovalResponseDto> approve(@PathVariable Integer id) {
+        return ResponseEntity.ok(approvalService.approve(id));
     }
 
     @PostMapping("/{id}/reject")
-    public ResponseEntity<ApprovalResponseDto> reject(
-            @PathVariable Integer id,
-            @RequestParam Integer reviewerId) {
-        return ResponseEntity.ok(approvalService.reject(id, reviewerId));
+    public ResponseEntity<ApprovalResponseDto> reject(@PathVariable Integer id) {
+        return ResponseEntity.ok(approvalService.reject(id));
     }
 }
