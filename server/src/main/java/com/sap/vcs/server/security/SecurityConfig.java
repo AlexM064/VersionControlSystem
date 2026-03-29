@@ -53,8 +53,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/test").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/documents")
                         .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
@@ -71,13 +70,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/documents/*/published-version")
                         .hasAnyRole("READER", "AUTHOR", "REVIEWER", "ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/documents/*/published-version/pdf")
-                        .hasAnyRole("READER", "AUTHOR", "REVIEWER", "ADMIN")
-
-                        .requestMatchers(HttpMethod.GET, "/documents/*/versions/*/pdf")
-                        .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
-
                         .requestMatchers(HttpMethod.POST, "/documents")
+                        .hasAnyRole("AUTHOR", "ADMIN")
+
+                        .requestMatchers(HttpMethod.PUT, "/documents/*")
                         .hasAnyRole("AUTHOR", "ADMIN")
 
                         .requestMatchers(HttpMethod.POST, "/documents/*/versions")
