@@ -1,9 +1,6 @@
 package com.sap.vcs.server.service;
 
-import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
-import com.sap.vcs.server.dto.DocumentRequestDto;
-import com.sap.vcs.server.dto.DocumentResponseDto;
-import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.dto.*;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
@@ -102,6 +99,7 @@ public class DocumentService {
         return mapToVersionResponse(publishedVersion);
     }
 
+
     private DocumentHistoryResponseDto mapToHistoryResponse(DocumentVersion version, Integer publishedVersionId) {
         return new DocumentHistoryResponseDto(
                 version.getId(),
@@ -133,5 +131,16 @@ public class DocumentService {
                 document.getStatus() != null ? document.getStatus().name() : null,
                 document.getPublishedVersion() != null ? document.getPublishedVersion().getId() : null
         );
+    }
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
+    public DocumentResponseDto updateDocument(Integer id, UpdateDocumentMetadataRequestDto request) {
+        Document document = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + id));
+
+        document.setTitle(request.getTitle());
+        document.setDescription(request.getDescription());
+
+        Document updatedDocument = documentRepository.save(document);
+        return mapToResponse(updatedDocument);
     }
 }

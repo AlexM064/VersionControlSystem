@@ -32,6 +32,8 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 @WebMvcTest(DocumentController.class)
 @Import({
@@ -203,4 +205,45 @@ class DocumentControllerAuthorizationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
     }
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void updateDocument_allowsAuthor() throws Exception {
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
+        request.setTitle("Updated title");
+        request.setDescription("Updated description");
+
+        when(documentService.updateDocument(eq(1), any(UpdateDocumentMetadataRequestDto.class)))
+                .thenReturn(new DocumentResponseDto(1, "Updated title", "Updated description", "DRAFT", null));
+
+        mockMvc.perform(put("/documents/1")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "REVIEWER")
+    void updateDocument_forbidsReviewer() throws Exception {
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
+        request.setTitle("Updated title");
+        request.setDescription("Updated description");
+
+        mockMvc.perform(put("/documents/1")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateDocument_requiresAuthentication() throws Exception {
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
+        request.setTitle("Updated title");
+        request.setDescription("Updated description");
+
+        mockMvc.perform(put("/documents/1")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
 }

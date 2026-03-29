@@ -1,9 +1,6 @@
 package com.sap.vcs.server.controller;
 
-import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
-import com.sap.vcs.server.dto.DocumentRequestDto;
-import com.sap.vcs.server.dto.DocumentResponseDto;
-import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.dto.*;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.service.DocumentService;
 import jakarta.validation.Valid;
@@ -30,6 +27,14 @@ public class DocumentController {
     public ResponseEntity<DocumentResponseDto> createDocument(@Valid @RequestBody DocumentRequestDto request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(documentService.createDocument(request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<DocumentResponseDto> updateDocument(
+            @PathVariable Integer id,
+            @Valid @RequestBody UpdateDocumentMetadataRequestDto request
+    ) {
+        return ResponseEntity.ok(documentService.updateDocument(id, request));
     }
 
     @GetMapping

@@ -38,6 +38,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
+import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
+
 @SpringJUnitConfig(ServiceMethodSecurityTest.MethodSecurityTestConfig.class)
 @TestExecutionListeners(
         listeners = WithSecurityContextTestExecutionListener.class,
@@ -316,5 +318,39 @@ class ServiceMethodSecurityTest {
     @WithMockUser(roles = "READER")
     void rollbackVersion_forbidsReader() {
         assertThrows(AccessDeniedException.class, () -> documentVersionService.rollbackVersion(10));
+    }
+
+    @Test
+    @WithMockUser(roles = "REVIEWER")
+    void updateDocument_forbidsReviewer() {
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
+        request.setTitle("Updated title");
+        request.setDescription("Updated description");
+
+        assertThrows(AccessDeniedException.class, () -> documentService.updateDocument(1, request));
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void updateDocument_allowsAuthor() {
+        Document existing = new Document();
+        existing.setId(1);
+        existing.setTitle("Old title");
+        existing.setDescription("Old description");
+        existing.setStatus(DocumentStatus.DRAFT);
+
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
+        request.setTitle("Updated title");
+        request.setDescription("Updated description");
+
+        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.findById(1))
+                .thenReturn(Optional.of(existing));
+        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.save(any(Document.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = documentService.updateDocument(1, request);
+
+        assertEquals("Updated title", response.getTitle());
+        assertEquals("Updated description", response.getDescription());
     }
 }
