@@ -34,7 +34,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import java.time.LocalDateTime;
 
 @WebMvcTest(DocumentController.class)
 @Import({
