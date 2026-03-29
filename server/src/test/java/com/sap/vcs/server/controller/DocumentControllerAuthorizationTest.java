@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import java.time.LocalDateTime;
 
 @WebMvcTest(DocumentController.class)
 @Import({
@@ -63,7 +64,16 @@ class DocumentControllerAuthorizationTest {
     void getDocuments_allowsAuthor() throws Exception {
         when(documentService.getAllDocuments(eq(null), eq(null), any()))
                 .thenReturn(new PageImpl<>(
-                        List.of(new DocumentResponseDto(1, "Spec", "Description", "DRAFT", null)),
+                        List.of(new DocumentResponseDto(
+                                1,
+                                "Spec",
+                                "Description",
+                                "DRAFT",
+                                null,
+                                "author.local",
+                                LocalDateTime.now(),
+                                LocalDateTime.now()
+                        )),
                         PageRequest.of(0, 10),
                         1
                 ));
@@ -89,7 +99,16 @@ class DocumentControllerAuthorizationTest {
     @WithMockUser(roles = "REVIEWER")
     void getDocumentById_allowsReviewer() throws Exception {
         when(documentService.getDocumentById(1))
-                .thenReturn(new DocumentResponseDto(1, "Spec", "Description", "DRAFT", null));
+                .thenReturn(new DocumentResponseDto(
+                        1,
+                        "Spec",
+                        "Description",
+                        "DRAFT",
+                        null,
+                        "author.local",
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                ));
 
         mockMvc.perform(get("/documents/1"))
                 .andExpect(status().isOk());
@@ -173,7 +192,16 @@ class DocumentControllerAuthorizationTest {
         request.setDescription("Description");
 
         when(documentService.createDocument(any(DocumentRequestDto.class)))
-                .thenReturn(new DocumentResponseDto(1, "New document", "Description", "DRAFT", null));
+                .thenReturn(new DocumentResponseDto(
+                        1,
+                        "Spec",
+                        "Description",
+                        "DRAFT",
+                        null,
+                        "author.local",
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                ));
 
         mockMvc.perform(post("/documents")
                         .contentType(APPLICATION_JSON)
@@ -213,7 +241,16 @@ class DocumentControllerAuthorizationTest {
         request.setDescription("Updated description");
 
         when(documentService.updateDocument(eq(1), any(UpdateDocumentMetadataRequestDto.class)))
-                .thenReturn(new DocumentResponseDto(1, "Updated title", "Updated description", "DRAFT", null));
+                .thenReturn(new DocumentResponseDto(
+                        1,
+                        "Spec",
+                        "Description",
+                        "DRAFT",
+                        null,
+                        "author.local",
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                ));
 
         mockMvc.perform(put("/documents/1")
                         .contentType(APPLICATION_JSON)

@@ -1,4 +1,5 @@
 package com.sap.vcs.server.dto;
+import java.time.LocalDateTime;
 
 public class DocumentResponseDto {
 
@@ -7,6 +8,9 @@ public class DocumentResponseDto {
     private String description;
     private String status;
     private Integer publishedVersionId;
+    private String ownerUsername;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public DocumentResponseDto() {
     }
@@ -16,13 +20,19 @@ public class DocumentResponseDto {
             String title,
             String description,
             String status,
-            Integer publishedVersionId
+            Integer publishedVersionId,
+            String ownerUsername,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
     ) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.status = status;
         this.publishedVersionId = publishedVersionId;
+        this.ownerUsername = ownerUsername;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public Integer getId() {
@@ -63,5 +73,29 @@ public class DocumentResponseDto {
 
     public void setPublishedVersionId(Integer publishedVersionId) {
         this.publishedVersionId = publishedVersionId;
+    }
+
+    public String getOwnerUsername() {
+        return ownerUsername;
+    }
+
+    public void setOwnerUsername(String ownerUsername) {
+        this.ownerUsername = ownerUsername;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }
