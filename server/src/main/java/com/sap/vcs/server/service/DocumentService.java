@@ -128,8 +128,11 @@ public class DocumentService {
                 document.getId(),
                 document.getTitle(),
                 document.getDescription(),
-                document.getStatus() != null ? document.getStatus().name() : null,
-                document.getPublishedVersion() != null ? document.getPublishedVersion().getId() : null
+                document.getStatus().name(),
+                document.getPublishedVersion() != null ? document.getPublishedVersion().getId() : null,
+                document.getOwner() != null ? document.getOwner().getUsername() : null,
+                document.getCreatedAt(),
+                document.getUpdatedAt()
         );
     }
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")

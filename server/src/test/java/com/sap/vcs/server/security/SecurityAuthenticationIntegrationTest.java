@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
 
@@ -60,7 +61,14 @@ class SecurityAuthenticationIntegrationTest {
         when(documentService.getAllDocuments(eq(null), eq(null), any()))
                 .thenReturn(new PageImpl<>(
                         java.util.List.of(
-                                new DocumentResponseDto(1, "Spec", "Description", DocumentStatus.DRAFT.name(), null)
+                                new DocumentResponseDto(1,
+                                        "Spec",
+                                        "Description",
+                                        "DRAFT",
+                                        null,
+                                        "author.local",
+                                        LocalDateTime.now(),
+                                        LocalDateTime.now())
                         ),
                         PageRequest.of(0, 10),
                         1
