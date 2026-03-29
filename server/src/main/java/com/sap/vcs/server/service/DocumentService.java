@@ -17,6 +17,7 @@ import com.sap.vcs.server.specification.DocumentSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -114,8 +115,12 @@ public class DocumentService {
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public DocumentResponseDto updateDocument(Integer id, UpdateDocumentMetadataRequestDto request) {
+        User currentUser = getCurrentAuthenticatedUser();
+
         Document document = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + id));
+
+        validateOwnershipOrAdmin(document, currentUser);
 
         document.setTitle(request.getTitle());
         document.setDescription(request.getDescription());
@@ -129,6 +134,18 @@ public class DocumentService {
 
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found: " + username));
+    }
+
+    private void validateOwnershipOrAdmin(Document document, User user) {
+        boolean isAdmin = user.getRoles() != null &&
+                user.getRoles().stream().anyMatch(role -> "ADMIN".equalsIgnoreCase(role.getName()));
+
+        boolean isOwner = document.getOwner() != null &&
+                document.getOwner().getId().equals(user.getId());
+
+        if (!isAdmin && !isOwner) {
+            throw new AccessDeniedException("You do not have permission to modify this document");
+        }
     }
 
     private DocumentHistoryResponseDto mapToHistoryResponse(DocumentVersion version, Integer publishedVersionId) {
