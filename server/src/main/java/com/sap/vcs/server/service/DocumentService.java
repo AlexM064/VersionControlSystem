@@ -1,17 +1,24 @@
 package com.sap.vcs.server.service;
 
-import com.sap.vcs.server.dto.*;
+import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
+import com.sap.vcs.server.dto.DocumentRequestDto;
+import com.sap.vcs.server.dto.DocumentResponseDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
+import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
+import com.sap.vcs.server.repository.UserRepository;
 import com.sap.vcs.server.specification.DocumentSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,18 +28,24 @@ public class DocumentService {
 
     private final DocumentRepository documentRepository;
     private final DocumentVersionRepository documentVersionRepository;
+    private final UserRepository userRepository;
 
     public DocumentService(DocumentRepository documentRepository,
-                           DocumentVersionRepository documentVersionRepository) {
+                           DocumentVersionRepository documentVersionRepository,
+                           UserRepository userRepository) {
         this.documentRepository = documentRepository;
         this.documentVersionRepository = documentVersionRepository;
+        this.userRepository = userRepository;
     }
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public DocumentResponseDto createDocument(DocumentRequestDto request) {
+        User currentUser = getCurrentAuthenticatedUser();
+
         Document document = new Document();
         document.setTitle(request.getTitle());
         document.setDescription(request.getDescription());
+        document.setOwner(currentUser);
 
         Document savedDocument = documentRepository.save(document);
         return mapToResponse(savedDocument);
@@ -99,6 +112,24 @@ public class DocumentService {
         return mapToVersionResponse(publishedVersion);
     }
 
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
+    public DocumentResponseDto updateDocument(Integer id, UpdateDocumentMetadataRequestDto request) {
+        Document document = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + id));
+
+        document.setTitle(request.getTitle());
+        document.setDescription(request.getDescription());
+
+        Document updatedDocument = documentRepository.save(document);
+        return mapToResponse(updatedDocument);
+    }
+
+    private User getCurrentAuthenticatedUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found: " + username));
+    }
 
     private DocumentHistoryResponseDto mapToHistoryResponse(DocumentVersion version, Integer publishedVersionId) {
         return new DocumentHistoryResponseDto(
@@ -134,16 +165,5 @@ public class DocumentService {
                 document.getCreatedAt(),
                 document.getUpdatedAt()
         );
-    }
-    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
-    public DocumentResponseDto updateDocument(Integer id, UpdateDocumentMetadataRequestDto request) {
-        Document document = documentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + id));
-
-        document.setTitle(request.getTitle());
-        document.setDescription(request.getDescription());
-
-        Document updatedDocument = documentRepository.save(document);
-        return mapToResponse(updatedDocument);
     }
 }
