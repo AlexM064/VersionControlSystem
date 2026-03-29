@@ -4,8 +4,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.sap.vcs.server.entity.enums.VersionStatus;
 
-@   Entity
+@Entity
 @Table(name = "document_versions",
        uniqueConstraints = @UniqueConstraint(columnNames = {"document_id", "version_number"}))
 public class DocumentVersion {
@@ -20,6 +21,10 @@ public class DocumentVersion {
 
     @Column(name = "version_number", nullable = false)
     private Integer versionNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private VersionStatus status = VersionStatus.DRAFT;
 
     @Column(columnDefinition = "TEXT")
     private String content;
@@ -107,7 +112,9 @@ public class DocumentVersion {
         return approvals;
     }
 
-    public void setApprovals(List<Approval> approvals) {
-        this.approvals = approvals;
-    }
+    public void setApprovals(List<Approval> approvals) {this.approvals = approvals;}
+
+    public VersionStatus getStatus() {return status;}
+
+    public void setStatus(VersionStatus status) {this.status = status;}
 }

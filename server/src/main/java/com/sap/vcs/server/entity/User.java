@@ -3,6 +3,7 @@ package com.sap.vcs.server.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Entity
@@ -67,8 +68,8 @@ public class User {
         return passwordHash;
     }
 
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
+    public void updateEncodedPassword(String encodedPassword) {
+        this.passwordHash = Objects.requireNonNull(encodedPassword, "encodedPassword must not be null");
     }
 
     public Boolean getIsActive() {
@@ -92,6 +93,6 @@ public class User {
     }
 
     public void setRoles(Set<Role> roles) {
-        this.roles = roles;
+        this.roles = roles != null ? new HashSet<>(roles) : new HashSet<>();
     }
 }

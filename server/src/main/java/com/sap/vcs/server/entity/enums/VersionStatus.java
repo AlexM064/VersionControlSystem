@@ -1,10 +1,9 @@
 package com.sap.vcs.server.entity.enums;
 
-public enum DocumentStatus {
+public enum VersionStatus {
     DRAFT,
     IN_REVIEW,
     APPROVED,
-    PUBLISHED,
     REJECTED,
-    ARCHIVED
+    PUBLISHED
 }
