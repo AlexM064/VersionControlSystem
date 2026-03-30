@@ -6,8 +6,10 @@ import com.sap.vcs.server.entity.Role;
 import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.repository.UserRepository;
+import com.sap.vcs.server.security.jwt.JwtAuthenticationFilter;
 import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.DocumentService;
+import com.sap.vcs.server.service.DocumentVersionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -31,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({
         SecurityConfig.class,
         CustomUserDetailsService.class,
+        JwtAuthenticationFilter.class,
         RestAuthenticationEntryPoint.class,
         RestAccessDeniedHandler.class
 })
@@ -44,6 +47,9 @@ class SecurityAuthenticationIntegrationTest {
 
     @MockBean
     private DocumentService documentService;
+
+    @MockBean
+    private DocumentVersionService documentVersionService;
 
     @MockBean
     private JwtService jwtService;

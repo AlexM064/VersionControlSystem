@@ -7,13 +7,16 @@ import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.service.DocumentService;
+import com.sap.vcs.server.service.DocumentVersionService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.sap.vcs.server.dto.CompareVersionsResponseDto;
 
 import java.util.List;
 
@@ -22,9 +25,11 @@ import java.util.List;
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final DocumentVersionService documentVersionService;
 
-    public DocumentController(DocumentService documentService) {
+    public DocumentController(DocumentService documentService, DocumentVersionService documentVersionService) {
         this.documentService = documentService;
+        this.documentVersionService = documentVersionService;
     }
 
     @PostMapping
@@ -39,6 +44,25 @@ public class DocumentController {
             @Valid @RequestBody UpdateDocumentMetadataRequestDto request
     ) {
         return ResponseEntity.ok(documentService.updateDocument(id, request));
+    }
+
+    @PatchMapping("/{id}/archive")
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
+    public ResponseEntity<Void> archiveDocument(@PathVariable Integer id) {
+        documentService.archiveDocument(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/compare")
+    @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
+    public ResponseEntity<CompareVersionsResponseDto> compareVersions(
+            @RequestParam Integer leftVersionId,
+            @RequestParam Integer rightVersionId) {
+
+        CompareVersionsResponseDto response =
+                documentVersionService.compareVersions(leftVersionId, rightVersionId);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping

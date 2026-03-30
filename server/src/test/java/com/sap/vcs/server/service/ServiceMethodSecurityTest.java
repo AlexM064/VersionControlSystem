@@ -138,7 +138,7 @@ class ServiceMethodSecurityTest {
         saved.setId(1);
         saved.setTitle("Spec");
         saved.setDescription("Description");
-        saved.setStatus(DocumentStatus.DRAFT);
+        saved.setStatus(DocumentStatus.ACTIVE);
         saved.setOwner(author);
 
         when(MethodSecurityTestConfig.USER_REPOSITORY.findByUsername("author.local"))
@@ -282,7 +282,7 @@ class ServiceMethodSecurityTest {
         Document document = new Document();
         document.setId(1);
         document.setTitle("Spec");
-        document.setStatus(DocumentStatus.PUBLISHED);
+        document.setStatus(DocumentStatus.ACTIVE);
 
         DocumentVersion version = new DocumentVersion();
         version.setId(10);
@@ -310,12 +310,13 @@ class ServiceMethodSecurityTest {
         Document document = new Document();
         document.setId(1);
         document.setTitle("Spec");
-        document.setStatus(DocumentStatus.PUBLISHED);
+        document.setStatus(DocumentStatus.ACTIVE);
 
         DocumentVersion version = new DocumentVersion();
         version.setId(10);
         version.setDocument(document);
         version.setVersionNumber(1);
+        version.setStatus(VersionStatus.APPROVED);
 
         when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(10))
                 .thenReturn(Optional.of(version));
