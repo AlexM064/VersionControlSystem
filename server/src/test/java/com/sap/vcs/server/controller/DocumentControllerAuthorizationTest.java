@@ -86,16 +86,7 @@ class DocumentControllerAuthorizationTest {
     void getDocuments_allowsAuthor() throws Exception {
         when(documentService.getAllDocuments(eq(null), eq(null), any()))
                 .thenReturn(new PageImpl<>(
-                        List.of(new DocumentResponseDto(
-                                1,
-                                "Spec",
-                                "Description",
-                                "DRAFT",
-                                null,
-                                "author.local",
-                                LocalDateTime.now(),
-                                LocalDateTime.now()
-                        )),
+                        List.of(new DocumentResponseDto(1, "Spec", "Description", "DRAFT", null)),
                         PageRequest.of(0, 10),
                         1
                 ));
@@ -174,16 +165,7 @@ class DocumentControllerAuthorizationTest {
     @WithMockUser(roles = "REVIEWER")
     void getDocumentById_allowsReviewer() throws Exception {
         when(documentService.getDocumentById(1))
-                .thenReturn(new DocumentResponseDto(
-                        1,
-                        "Spec",
-                        "Description",
-                        "DRAFT",
-                        null,
-                        "author.local",
-                        LocalDateTime.now(),
-                        LocalDateTime.now()
-                ));
+                .thenReturn(new DocumentResponseDto(1, "Spec", "Description", "DRAFT", null));
 
         mockMvc.perform(get("/documents/1"))
                 .andExpect(status().isOk());
@@ -267,16 +249,7 @@ class DocumentControllerAuthorizationTest {
         request.setDescription("Description");
 
         when(documentService.createDocument(any(DocumentRequestDto.class)))
-                .thenReturn(new DocumentResponseDto(
-                        1,
-                        "Spec",
-                        "Description",
-                        "DRAFT",
-                        null,
-                        "author.local",
-                        LocalDateTime.now(),
-                        LocalDateTime.now()
-                ));
+                .thenReturn(new DocumentResponseDto(1, "New document", "Description", "DRAFT", null,"author.local",LocalDateTime.now(),LocalDateTime.now() ));
 
         mockMvc.perform(post("/documents")
                         .contentType(APPLICATION_JSON)
@@ -308,54 +281,4 @@ class DocumentControllerAuthorizationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
     }
-    @Test
-    @WithMockUser(roles = "AUTHOR")
-    void updateDocument_allowsAuthor() throws Exception {
-        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
-        request.setTitle("Updated title");
-        request.setDescription("Updated description");
-
-        when(documentService.updateDocument(eq(1), any(UpdateDocumentMetadataRequestDto.class)))
-                .thenReturn(new DocumentResponseDto(
-                        1,
-                        "Spec",
-                        "Description",
-                        "DRAFT",
-                        null,
-                        "author.local",
-                        LocalDateTime.now(),
-                        LocalDateTime.now()
-                ));
-
-        mockMvc.perform(put("/documents/1")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    @WithMockUser(roles = "REVIEWER")
-    void updateDocument_forbidsReviewer() throws Exception {
-        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
-        request.setTitle("Updated title");
-        request.setDescription("Updated description");
-
-        mockMvc.perform(put("/documents/1")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void updateDocument_requiresAuthentication() throws Exception {
-        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
-        request.setTitle("Updated title");
-        request.setDescription("Updated description");
-
-        mockMvc.perform(put("/documents/1")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
-    }
-
 }

@@ -2,35 +2,39 @@ package com.sap.vcs.server.service;
 
 import com.sap.vcs.server.dto.DocumentRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionRequestDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.entity.Approval;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.entity.enums.ApprovalDecision;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
-import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.context.support.WithSecurityContextTestExecutionListener;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
@@ -75,8 +79,13 @@ class ServiceMethodSecurityTest {
                 DocumentRepository documentRepository,
                 DocumentVersionRepository documentVersionRepository,
                 UserRepository userRepository
+
         ) {
-            return new DocumentService(documentRepository, documentVersionRepository, userRepository);
+            return new DocumentService(
+                    documentRepository,
+                    documentVersionRepository,
+                    userRepository
+            );
         }
 
         @Bean
@@ -94,7 +103,7 @@ class ServiceMethodSecurityTest {
             );
         }
 
-        @Bean
+    @Bean
         ApprovalService approvalService(
                 ApprovalRepository approvalRepository,
                 DocumentVersionRepository documentVersionRepository,
@@ -124,15 +133,11 @@ class ServiceMethodSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "author.local", roles = "AUTHOR")
+    @WithMockUser(roles = "AUTHOR")
     void createDocument_allowsAuthor() {
         DocumentRequestDto request = new DocumentRequestDto();
         request.setTitle("Spec");
         request.setDescription("Description");
-
-        User author = new User();
-        author.setId(1);
-        author.setUsername("author.local");
 
         Document saved = new Document();
         saved.setId(1);
@@ -141,10 +146,7 @@ class ServiceMethodSecurityTest {
         saved.setStatus(DocumentStatus.ACTIVE);
         saved.setOwner(author);
 
-        when(MethodSecurityTestConfig.USER_REPOSITORY.findByUsername("author.local"))
-                .thenReturn(Optional.of(author));
-        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.save(any(Document.class)))
-                .thenReturn(saved);
+        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.save(any(Document.class))).thenReturn(saved);
 
         assertDoesNotThrow(() -> documentService.createDocument(request));
     }
@@ -160,16 +162,15 @@ class ServiceMethodSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "author.local", roles = "AUTHOR")
+    @WithMockUser(roles = "AUTHOR")
     void createVersion_allowsAuthor() {
-        User author = new User();
-        author.setId(1);
-        author.setUsername("author.local");
-
         Document document = new Document();
         document.setId(1);
         document.setTitle("Spec");
-        document.setOwner(author);
+
+        User author = new User();
+        author.setId(101);
+        author.setUsername("user");
 
         DocumentVersionRequestDto request = new DocumentVersionRequestDto();
         request.setContent("Content");
@@ -181,19 +182,25 @@ class ServiceMethodSecurityTest {
         savedVersion.setVersionNumber(1);
         savedVersion.setContent("Content");
         savedVersion.setMessage("Initial");
-        savedVersion.setStatus(VersionStatus.DRAFT);
         savedVersion.setCreatedBy(author);
 
-        when(MethodSecurityTestConfig.USER_REPOSITORY.findByUsername("author.local"))
-                .thenReturn(Optional.of(author));
-        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.findById(1))
-                .thenReturn(Optional.of(document));
+        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.findById(1)).thenReturn(Optional.of(document));
+        when(MethodSecurityTestConfig.USER_REPOSITORY.findByUsername("user")).thenReturn(Optional.of(author));
         when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findTopByDocumentOrderByVersionNumberDesc(document))
                 .thenReturn(Optional.empty());
-        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.save(any(DocumentVersion.class)))
-                .thenReturn(savedVersion);
+        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.save(any(DocumentVersion.class))).thenReturn(savedVersion);
 
-        assertDoesNotThrow(() -> documentVersionService.createVersion(1, request));
+        DocumentVersionResponseDto response = documentVersionService.createVersion(1, request);
+
+        ArgumentCaptor<DocumentVersion> captor = ArgumentCaptor.forClass(DocumentVersion.class);
+        verify(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY).save(captor.capture());
+
+        DocumentVersion capturedVersion = captor.getValue();
+        assertNotNull(capturedVersion);
+        assertEquals(document, capturedVersion.getDocument());
+        assertEquals(1, capturedVersion.getVersionNumber());
+        assertEquals(author, capturedVersion.getCreatedBy());
+        assertEquals("user", response.getCreatedByUsername());
     }
 
     @Test
@@ -207,11 +214,10 @@ class ServiceMethodSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "reviewer.local", roles = "REVIEWER")
+    @WithMockUser(roles = "REVIEWER")
     void approve_allowsReviewer() {
         DocumentVersion version = new DocumentVersion();
         version.setId(1);
-        version.setStatus(VersionStatus.IN_REVIEW);
 
         User reviewer = new User();
         reviewer.setId(100);
@@ -223,14 +229,10 @@ class ServiceMethodSecurityTest {
         approval.setReviewer(reviewer);
         approval.setDecision(ApprovalDecision.APPROVED);
 
-        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(1))
-                .thenReturn(Optional.of(version));
-        when(MethodSecurityTestConfig.USER_REPOSITORY.findByUsername("reviewer.local"))
-                .thenReturn(Optional.of(reviewer));
-        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.findByVersionAndReviewer(version, reviewer))
-                .thenReturn(Optional.empty());
-        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.save(any(Approval.class)))
-                .thenReturn(approval);
+        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(1)).thenReturn(Optional.of(version));
+        when(MethodSecurityTestConfig.USER_REPOSITORY.findById(100)).thenReturn(Optional.of(reviewer));
+        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.findByVersionAndReviewer(version, reviewer)).thenReturn(Optional.empty());
+        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.save(any(Approval.class))).thenReturn(approval);
 
         assertDoesNotThrow(() -> approvalService.approve(1));
     }
@@ -242,15 +244,14 @@ class ServiceMethodSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "admin.local", roles = "ADMIN")
+    @WithMockUser(roles = "ADMIN")
     void reject_allowsAdmin() {
         DocumentVersion version = new DocumentVersion();
         version.setId(1);
-        version.setStatus(VersionStatus.IN_REVIEW);
 
         User reviewer = new User();
         reviewer.setId(100);
-        reviewer.setUsername("admin.local");
+        reviewer.setUsername("reviewer.local");
 
         Approval approval = new Approval();
         approval.setId(11);
@@ -258,14 +259,10 @@ class ServiceMethodSecurityTest {
         approval.setReviewer(reviewer);
         approval.setDecision(ApprovalDecision.REJECTED);
 
-        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(1))
-                .thenReturn(Optional.of(version));
-        when(MethodSecurityTestConfig.USER_REPOSITORY.findByUsername("admin.local"))
-                .thenReturn(Optional.of(reviewer));
-        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.findByVersionAndReviewer(version, reviewer))
-                .thenReturn(Optional.empty());
-        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.save(any(Approval.class)))
-                .thenReturn(approval);
+        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(1)).thenReturn(Optional.of(version));
+        when(MethodSecurityTestConfig.USER_REPOSITORY.findById(100)).thenReturn(Optional.of(reviewer));
+        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.findByVersionAndReviewer(version, reviewer)).thenReturn(Optional.empty());
+        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.save(any(Approval.class))).thenReturn(approval);
 
         assertDoesNotThrow(() -> approvalService.reject(1));
     }
@@ -288,12 +285,11 @@ class ServiceMethodSecurityTest {
         version.setId(10);
         version.setDocument(document);
         version.setVersionNumber(2);
-        version.setStatus(VersionStatus.APPROVED);
 
-        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(10))
-                .thenReturn(Optional.of(version));
-        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.save(any(Document.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(10)).thenReturn(Optional.of(version));
+        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.existsByVersionAndDecision(version, ApprovalDecision.APPROVED)).thenReturn(true);
+        when(MethodSecurityTestConfig.APPROVAL_REPOSITORY.existsByVersionAndDecision(version, ApprovalDecision.REJECTED)).thenReturn(false);
+        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         assertDoesNotThrow(() -> documentVersionService.publishVersion(10));
     }
@@ -318,10 +314,8 @@ class ServiceMethodSecurityTest {
         version.setVersionNumber(1);
         version.setStatus(VersionStatus.APPROVED);
 
-        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(10))
-                .thenReturn(Optional.of(version));
-        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.save(any(Document.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(10)).thenReturn(Optional.of(version));
+        when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         assertDoesNotThrow(() -> documentVersionService.rollbackVersion(10));
     }

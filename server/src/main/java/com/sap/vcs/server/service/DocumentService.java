@@ -10,6 +10,7 @@ import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
+import com.sap.vcs.server.repository.UserRepository;
 import com.sap.vcs.server.specification.DocumentSpecification;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -44,7 +45,6 @@ public class DocumentService {
         Document document = new Document();
         document.setTitle(request.getTitle());
         document.setDescription(request.getDescription());
-        document.setOwner(currentUser);
 
         Document savedDocument = documentRepository.save(document);
         return mapToResponse(savedDocument);
