@@ -1,5 +1,6 @@
 package com.sap.vcs.server.service;
 
+import com.sap.vcs.server.dto.CompareVersionsResponseDto;
 import com.sap.vcs.server.dto.DocumentVersionRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.dto.PublishDocumentResponseDto;
@@ -14,18 +15,15 @@ import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import com.sap.vcs.server.dto.CompareVersionsResponseDto;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
-//import jakarta.transaction.Transactional;
-
+import java.util.Objects;
 
 @Service
 public class DocumentVersionService {
@@ -54,6 +52,7 @@ public class DocumentVersionService {
                         new ResourceNotFoundException("Document not found with id: " + documentId));
 
         validateDocumentIsNotArchived(document);
+
         User currentUser = getCurrentAuthenticatedUser();
         validateOwnershipOrAdmin(document, currentUser);
 
@@ -110,6 +109,57 @@ public class DocumentVersionService {
         validateRollbackRules(version);
 
         return applyPublishedVersion(version);
+    }
+
+    @Transactional
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
+    public DocumentVersionResponseDto submitForReview(Integer versionId) {
+        DocumentVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + versionId));
+
+        validateDocumentIsNotArchived(version.getDocument());
+
+        User currentUser = getCurrentAuthenticatedUser();
+        validateOwnershipOrAdmin(version.getDocument(), currentUser);
+
+        if (version.getStatus() != VersionStatus.DRAFT) {
+            throw new BusinessRuleViolationException(
+                    "Only DRAFT versions can be submitted for review"
+            );
+        }
+
+        version.setStatus(VersionStatus.IN_REVIEW);
+
+        DocumentVersion saved = versionRepository.save(version);
+        return mapToResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
+    public CompareVersionsResponseDto compareVersions(Integer leftVersionId, Integer rightVersionId) {
+        DocumentVersion leftVersion = versionRepository.findById(leftVersionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + leftVersionId));
+
+        DocumentVersion rightVersion = versionRepository.findById(rightVersionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + rightVersionId));
+
+        validateSameDocument(leftVersion, rightVersion);
+
+        boolean identical = Objects.equals(leftVersion.getContent(), rightVersion.getContent());
+
+        return new CompareVersionsResponseDto(
+                leftVersion.getDocument().getId(),
+                leftVersion.getId(),
+                leftVersion.getVersionNumber(),
+                leftVersion.getContent(),
+                rightVersion.getId(),
+                rightVersion.getVersionNumber(),
+                rightVersion.getContent(),
+                identical
+        );
     }
 
     private void validatePublishRules(DocumentVersion version) {
@@ -206,54 +256,5 @@ public class DocumentVersionService {
         if (!isAdmin && !isOwner) {
             throw new AccessDeniedException("You do not have permission to create versions for this document");
         }
-    }
-
-    @Transactional
-    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
-    public DocumentVersionResponseDto submitForReview(Integer versionId) {
-        DocumentVersion version = versionRepository.findById(versionId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Version not found with id: " + versionId));
-
-        validateDocumentIsNotArchived(version.getDocument());
-        if (version.getStatus() != VersionStatus.DRAFT) {
-            throw new BusinessRuleViolationException(
-                    "Only DRAFT versions can be submitted for review"
-            );
-        }
-
-        version.setStatus(VersionStatus.IN_REVIEW);
-
-        DocumentVersion saved = versionRepository.save(version);
-
-        return mapToResponse(saved);
-    }
-
-
-    @Transactional(readOnly = true)
-    @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
-    public CompareVersionsResponseDto compareVersions(Integer leftVersionId, Integer rightVersionId) {
-        DocumentVersion leftVersion = versionRepository.findById(leftVersionId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Version not found with id: " + leftVersionId));
-
-        DocumentVersion rightVersion = versionRepository.findById(rightVersionId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Version not found with id: " + rightVersionId));
-
-        validateSameDocument(leftVersion, rightVersion);
-
-        boolean identical = java.util.Objects.equals(leftVersion.getContent(), rightVersion.getContent());
-
-        return new CompareVersionsResponseDto(
-                leftVersion.getDocument().getId(),
-                leftVersion.getId(),
-                leftVersion.getVersionNumber(),
-                leftVersion.getContent(),
-                rightVersion.getId(),
-                rightVersion.getVersionNumber(),
-                rightVersion.getContent(),
-                identical
-        );
     }
 }

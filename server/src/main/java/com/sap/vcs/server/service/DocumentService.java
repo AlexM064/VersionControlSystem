@@ -1,6 +1,10 @@
 package com.sap.vcs.server.service;
 
-import com.sap.vcs.server.dto.*;
+import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
+import com.sap.vcs.server.dto.DocumentRequestDto;
+import com.sap.vcs.server.dto.DocumentResponseDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
@@ -9,7 +13,6 @@ import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
-import com.sap.vcs.server.repository.UserRepository;
 import com.sap.vcs.server.repository.UserRepository;
 import com.sap.vcs.server.specification.DocumentSpecification;
 import jakarta.transaction.Transactional;
@@ -45,6 +48,7 @@ public class DocumentService {
         Document document = new Document();
         document.setTitle(request.getTitle());
         document.setDescription(request.getDescription());
+        document.setOwner(currentUser);
 
         Document savedDocument = documentRepository.save(document);
         return mapToResponse(savedDocument);
@@ -83,9 +87,13 @@ public class DocumentService {
     @Transactional
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public void archiveDocument(Integer documentId) {
+        User currentUser = getCurrentAuthenticatedUser();
+
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Document not found with id: " + documentId));
+
+        validateOwnershipOrAdmin(document, currentUser);
 
         if (document.getStatus() == DocumentStatus.ARCHIVED) {
             throw new BusinessRuleViolationException("Document is already archived");

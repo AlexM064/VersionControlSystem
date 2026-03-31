@@ -1,11 +1,11 @@
 package com.sap.vcs.server.controller;
 
+import com.sap.vcs.server.dto.CompareVersionsResponseDto;
 import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
 import com.sap.vcs.server.dto.DocumentRequestDto;
 import com.sap.vcs.server.dto.DocumentResponseDto;
 import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
-import com.sap.vcs.server.dto.*;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.service.DocumentService;
 import com.sap.vcs.server.service.DocumentVersionService;
@@ -17,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import com.sap.vcs.server.dto.CompareVersionsResponseDto;
 
 import java.util.List;
 
@@ -58,8 +57,8 @@ public class DocumentController {
     @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     public ResponseEntity<CompareVersionsResponseDto> compareVersions(
             @RequestParam Integer leftVersionId,
-            @RequestParam Integer rightVersionId) {
-
+            @RequestParam Integer rightVersionId
+    ) {
         CompareVersionsResponseDto response =
                 documentVersionService.compareVersions(leftVersionId, rightVersionId);
 
