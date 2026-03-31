@@ -5,11 +5,13 @@ import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
+import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
 import com.sap.vcs.server.specification.DocumentSpecification;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -76,6 +78,21 @@ public class DocumentService {
                         new ResourceNotFoundException("Document not found with id: " + id));
 
         return mapToResponse(document);
+    }
+
+    @Transactional
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
+    public void archiveDocument(Integer documentId) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Document not found with id: " + documentId));
+
+        if (document.getStatus() == DocumentStatus.ARCHIVED) {
+            throw new BusinessRuleViolationException("Document is already archived");
+        }
+
+        document.setStatus(DocumentStatus.ARCHIVED);
+        documentRepository.save(document);
     }
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")

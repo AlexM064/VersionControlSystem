@@ -1,17 +1,22 @@
 package com.sap.vcs.server.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
-import com.sap.vcs.server.dto.DocumentRequestDto;
-import com.sap.vcs.server.dto.DocumentResponseDto;
-import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.dto.*;
+import com.sap.vcs.server.exception.BusinessRuleViolationException;
+import com.sap.vcs.server.exception.ResourceNotFoundException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.security.CustomUserDetailsService;
 import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
 import com.sap.vcs.server.security.SecurityConfig;
+import com.sap.vcs.server.security.jwt.JwtAuthenticationFilter;
 import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.DocumentService;
+import com.sap.vcs.server.service.DocumentVersionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -27,12 +32,13 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 @WebMvcTest(DocumentController.class)
@@ -53,10 +59,27 @@ class DocumentControllerAuthorizationTest {
     private DocumentService documentService;
 
     @MockBean
+    private DocumentVersionService documentVersionService;
+
+    @MockBean
     private CustomUserDetailsService customUserDetailsService;
 
     @MockBean
     private JwtService jwtService;
+
+    @MockBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @BeforeEach
+    void letJwtFilterPassThrough() throws Exception {
+        doAnswer(invocation -> {
+            ServletRequest request = invocation.getArgument(0);
+            ServletResponse response = invocation.getArgument(1);
+            FilterChain chain = invocation.getArgument(2);
+            chain.doFilter(request, response);
+            return null;
+        }).when(jwtAuthenticationFilter).doFilter(any(), any(), any());
+    }
 
     @Test
     @WithMockUser(roles = "AUTHOR")
@@ -86,6 +109,59 @@ class DocumentControllerAuthorizationTest {
     void getDocuments_forbidsReader() throws Exception {
         mockMvc.perform(get("/documents"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void compareVersions_allowsAuthor() throws Exception {
+        CompareVersionsResponseDto response = new CompareVersionsResponseDto(
+                5,
+                3,
+                1,
+                "Това е първата тестова версия за новия документ.",
+                5,
+                2,
+                "vtora test versiq za compare",
+                false
+        );
+
+        when(documentVersionService.compareVersions(3, 5)).thenReturn(response);
+
+        mockMvc.perform(get("/documents/compare")
+                        .param("leftVersionId", "3")
+                        .param("rightVersionId", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.documentId").value(5))
+                .andExpect(jsonPath("$.leftVersionId").value(3))
+                .andExpect(jsonPath("$.leftVersionNumber").value(1))
+                .andExpect(jsonPath("$.rightVersionId").value(5))
+                .andExpect(jsonPath("$.rightVersionNumber").value(2))
+                .andExpect(jsonPath("$.identical").value(false));
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void compareVersions_returnsNotFoundWhenVersionMissing() throws Exception {
+        when(documentVersionService.compareVersions(3, 99))
+                .thenThrow(new ResourceNotFoundException("Version not found with id: 99"));
+
+        mockMvc.perform(get("/documents/compare")
+                        .param("leftVersionId", "3")
+                        .param("rightVersionId", "99"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void compareVersions_returnsConflictForDifferentDocuments() throws Exception {
+        when(documentVersionService.compareVersions(3, 8))
+                .thenThrow(new BusinessRuleViolationException(
+                        "Versions can be compared only if they belong to the same document"));
+
+        mockMvc.perform(get("/documents/compare")
+                        .param("leftVersionId", "3")
+                        .param("rightVersionId", "8"))
+                .andExpect(status().isConflict());
     }
 
     @Test

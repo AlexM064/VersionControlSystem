@@ -14,14 +14,18 @@ import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import com.sap.vcs.server.dto.CompareVersionsResponseDto;
 
 import java.util.List;
+
+//import jakarta.transaction.Transactional;
+
 
 @Service
 public class DocumentVersionService {
@@ -49,6 +53,7 @@ public class DocumentVersionService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Document not found with id: " + documentId));
 
+        validateDocumentIsNotArchived(document);
         User currentUser = getCurrentAuthenticatedUser();
         validateOwnershipOrAdmin(document, currentUser);
 
@@ -88,6 +93,7 @@ public class DocumentVersionService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
+        validateDocumentIsNotArchived(version.getDocument());
         validatePublishRules(version);
 
         return applyPublishedVersion(version);
@@ -100,6 +106,9 @@ public class DocumentVersionService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
+        validateDocumentIsNotArchived(version.getDocument());
+        validateRollbackRules(version);
+
         return applyPublishedVersion(version);
     }
 
@@ -111,14 +120,44 @@ public class DocumentVersionService {
         }
     }
 
+    private void validateRollbackRules(DocumentVersion version) {
+        if (version.getStatus() != VersionStatus.APPROVED
+                && version.getStatus() != VersionStatus.PUBLISHED) {
+            throw new BusinessRuleViolationException(
+                    "Rollback is allowed only to APPROVED or PUBLISHED versions"
+            );
+        }
+    }
+
+    private void validateDocumentIsNotArchived(Document document) {
+        if (document.getStatus() == DocumentStatus.ARCHIVED) {
+            throw new BusinessRuleViolationException("Cannot perform operation on archived document");
+        }
+    }
+
+    private void validateSameDocument(DocumentVersion leftVersion, DocumentVersion rightVersion) {
+        if (!leftVersion.getDocument().getId().equals(rightVersion.getDocument().getId())) {
+            throw new BusinessRuleViolationException(
+                    "Versions can be compared only if they belong to the same document"
+            );
+        }
+    }
+
     private PublishDocumentResponseDto applyPublishedVersion(DocumentVersion version) {
         Document document = version.getDocument();
+        DocumentVersion currentPublishedVersion = document.getPublishedVersion();
+
+        if (currentPublishedVersion != null && !currentPublishedVersion.getId().equals(version.getId())) {
+            currentPublishedVersion.setStatus(VersionStatus.APPROVED);
+            versionRepository.save(currentPublishedVersion);
+        }
 
         version.setStatus(VersionStatus.PUBLISHED);
         DocumentVersion savedVersion = versionRepository.save(version);
 
         document.setPublishedVersion(savedVersion);
-        document.setStatus(DocumentStatus.PUBLISHED);
+        document.setStatus(DocumentStatus.ACTIVE);
+        documentRepository.save(document);
 
         return new PublishDocumentResponseDto(
                 document.getId(),
@@ -176,6 +215,7 @@ public class DocumentVersionService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
+        validateDocumentIsNotArchived(version.getDocument());
         if (version.getStatus() != VersionStatus.DRAFT) {
             throw new BusinessRuleViolationException(
                     "Only DRAFT versions can be submitted for review"
@@ -187,5 +227,33 @@ public class DocumentVersionService {
         DocumentVersion saved = versionRepository.save(version);
 
         return mapToResponse(saved);
+    }
+
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
+    public CompareVersionsResponseDto compareVersions(Integer leftVersionId, Integer rightVersionId) {
+        DocumentVersion leftVersion = versionRepository.findById(leftVersionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + leftVersionId));
+
+        DocumentVersion rightVersion = versionRepository.findById(rightVersionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Version not found with id: " + rightVersionId));
+
+        validateSameDocument(leftVersion, rightVersion);
+
+        boolean identical = java.util.Objects.equals(leftVersion.getContent(), rightVersion.getContent());
+
+        return new CompareVersionsResponseDto(
+                leftVersion.getDocument().getId(),
+                leftVersion.getId(),
+                leftVersion.getVersionNumber(),
+                leftVersion.getContent(),
+                rightVersion.getId(),
+                rightVersion.getVersionNumber(),
+                rightVersion.getContent(),
+                identical
+        );
     }
 }
