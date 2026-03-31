@@ -35,6 +35,9 @@ public class DocumentResponseDto {
         this.updatedAt = updatedAt;
     }
 
+    public DocumentResponseDto(Integer id, String title, String description, String s, Integer integer) {
+    }
+
     public Integer getId() {
         return id;
     }

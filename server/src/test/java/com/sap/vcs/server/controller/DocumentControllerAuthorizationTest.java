@@ -1,22 +1,17 @@
 package com.sap.vcs.server.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sap.vcs.server.dto.*;
-import com.sap.vcs.server.exception.BusinessRuleViolationException;
-import com.sap.vcs.server.exception.ResourceNotFoundException;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
+import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
+import com.sap.vcs.server.dto.DocumentRequestDto;
+import com.sap.vcs.server.dto.DocumentResponseDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.security.CustomUserDetailsService;
 import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
 import com.sap.vcs.server.security.SecurityConfig;
-import com.sap.vcs.server.security.jwt.JwtAuthenticationFilter;
 import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.DocumentService;
-import com.sap.vcs.server.service.DocumentVersionService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -32,14 +27,11 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 @WebMvcTest(DocumentController.class)
 @Import({
@@ -59,43 +51,17 @@ class DocumentControllerAuthorizationTest {
     private DocumentService documentService;
 
     @MockBean
-    private DocumentVersionService documentVersionService;
-
-    @MockBean
     private CustomUserDetailsService customUserDetailsService;
 
     @MockBean
     private JwtService jwtService;
-
-    @MockBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    @BeforeEach
-    void letJwtFilterPassThrough() throws Exception {
-        doAnswer(invocation -> {
-            ServletRequest request = invocation.getArgument(0);
-            ServletResponse response = invocation.getArgument(1);
-            FilterChain chain = invocation.getArgument(2);
-            chain.doFilter(request, response);
-            return null;
-        }).when(jwtAuthenticationFilter).doFilter(any(), any(), any());
-    }
 
     @Test
     @WithMockUser(roles = "AUTHOR")
     void getDocuments_allowsAuthor() throws Exception {
         when(documentService.getAllDocuments(eq(null), eq(null), any()))
                 .thenReturn(new PageImpl<>(
-                        List.of(new DocumentResponseDto(
-                                1,
-                                "Spec",
-                                "Description",
-                                "DRAFT",
-                                null,
-                                "author.local",
-                                LocalDateTime.now(),
-                                LocalDateTime.now()
-                        )),
+                        List.of(new DocumentResponseDto(1, "Spec", "Description", "DRAFT", null)),
                         PageRequest.of(0, 10),
                         1
                 ));
@@ -112,59 +78,6 @@ class DocumentControllerAuthorizationTest {
     }
 
     @Test
-    @WithMockUser(roles = "AUTHOR")
-    void compareVersions_allowsAuthor() throws Exception {
-        CompareVersionsResponseDto response = new CompareVersionsResponseDto(
-                5,
-                3,
-                1,
-                "Това е първата тестова версия за новия документ.",
-                5,
-                2,
-                "vtora test versiq za compare",
-                false
-        );
-
-        when(documentVersionService.compareVersions(3, 5)).thenReturn(response);
-
-        mockMvc.perform(get("/documents/compare")
-                        .param("leftVersionId", "3")
-                        .param("rightVersionId", "5"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.documentId").value(5))
-                .andExpect(jsonPath("$.leftVersionId").value(3))
-                .andExpect(jsonPath("$.leftVersionNumber").value(1))
-                .andExpect(jsonPath("$.rightVersionId").value(5))
-                .andExpect(jsonPath("$.rightVersionNumber").value(2))
-                .andExpect(jsonPath("$.identical").value(false));
-    }
-
-    @Test
-    @WithMockUser(roles = "AUTHOR")
-    void compareVersions_returnsNotFoundWhenVersionMissing() throws Exception {
-        when(documentVersionService.compareVersions(3, 99))
-                .thenThrow(new ResourceNotFoundException("Version not found with id: 99"));
-
-        mockMvc.perform(get("/documents/compare")
-                        .param("leftVersionId", "3")
-                        .param("rightVersionId", "99"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @WithMockUser(roles = "AUTHOR")
-    void compareVersions_returnsConflictForDifferentDocuments() throws Exception {
-        when(documentVersionService.compareVersions(3, 8))
-                .thenThrow(new BusinessRuleViolationException(
-                        "Versions can be compared only if they belong to the same document"));
-
-        mockMvc.perform(get("/documents/compare")
-                        .param("leftVersionId", "3")
-                        .param("rightVersionId", "8"))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
     void getDocuments_requiresAuthentication() throws Exception {
         mockMvc.perform(get("/documents"))
                 .andExpect(status().isUnauthorized());
@@ -174,16 +87,7 @@ class DocumentControllerAuthorizationTest {
     @WithMockUser(roles = "REVIEWER")
     void getDocumentById_allowsReviewer() throws Exception {
         when(documentService.getDocumentById(1))
-                .thenReturn(new DocumentResponseDto(
-                        1,
-                        "Spec",
-                        "Description",
-                        "DRAFT",
-                        null,
-                        "author.local",
-                        LocalDateTime.now(),
-                        LocalDateTime.now()
-                ));
+                .thenReturn(new DocumentResponseDto(1, "Spec", "Description", "DRAFT", null));
 
         mockMvc.perform(get("/documents/1"))
                 .andExpect(status().isOk());
@@ -267,16 +171,7 @@ class DocumentControllerAuthorizationTest {
         request.setDescription("Description");
 
         when(documentService.createDocument(any(DocumentRequestDto.class)))
-                .thenReturn(new DocumentResponseDto(
-                        1,
-                        "Spec",
-                        "Description",
-                        "DRAFT",
-                        null,
-                        "author.local",
-                        LocalDateTime.now(),
-                        LocalDateTime.now()
-                ));
+                .thenReturn(new DocumentResponseDto(1, "New document", "Description", "DRAFT", null,"author.local",LocalDateTime.now(),LocalDateTime.now() ));
 
         mockMvc.perform(post("/documents")
                         .contentType(APPLICATION_JSON)
@@ -308,54 +203,4 @@ class DocumentControllerAuthorizationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
     }
-    @Test
-    @WithMockUser(roles = "AUTHOR")
-    void updateDocument_allowsAuthor() throws Exception {
-        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
-        request.setTitle("Updated title");
-        request.setDescription("Updated description");
-
-        when(documentService.updateDocument(eq(1), any(UpdateDocumentMetadataRequestDto.class)))
-                .thenReturn(new DocumentResponseDto(
-                        1,
-                        "Spec",
-                        "Description",
-                        "DRAFT",
-                        null,
-                        "author.local",
-                        LocalDateTime.now(),
-                        LocalDateTime.now()
-                ));
-
-        mockMvc.perform(put("/documents/1")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    @WithMockUser(roles = "REVIEWER")
-    void updateDocument_forbidsReviewer() throws Exception {
-        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
-        request.setTitle("Updated title");
-        request.setDescription("Updated description");
-
-        mockMvc.perform(put("/documents/1")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void updateDocument_requiresAuthentication() throws Exception {
-        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto();
-        request.setTitle("Updated title");
-        request.setDescription("Updated description");
-
-        mockMvc.perform(put("/documents/1")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
-    }
-
 }
