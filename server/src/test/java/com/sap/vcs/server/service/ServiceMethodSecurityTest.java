@@ -144,6 +144,7 @@ class ServiceMethodSecurityTest {
         saved.setTitle("Spec");
         saved.setDescription("Description");
         saved.setStatus(DocumentStatus.ACTIVE);
+        saved.setOwner(author);
 
         when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.save(any(Document.class))).thenReturn(saved);
 
@@ -311,6 +312,7 @@ class ServiceMethodSecurityTest {
         version.setId(10);
         version.setDocument(document);
         version.setVersionNumber(1);
+        version.setStatus(VersionStatus.APPROVED);
 
         when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(10)).thenReturn(Optional.of(version));
         when(MethodSecurityTestConfig.DOCUMENT_REPOSITORY.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
