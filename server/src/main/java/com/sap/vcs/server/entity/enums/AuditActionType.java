@@ -1,0 +1,13 @@
+package com.sap.vcs.server.entity.enums;
+
+public enum AuditActionType {
+    DOCUMENT_CREATED,
+    DOCUMENT_UPDATED,
+    DOCUMENT_ARCHIVED,
+    VERSION_CREATED,
+    VERSION_SUBMITTED_FOR_REVIEW,
+    VERSION_APPROVED,
+    VERSION_REJECTED,
+    VERSION_PUBLISHED,
+    VERSION_ROLLED_BACK
+}

@@ -57,6 +57,7 @@ class ServiceMethodSecurityTest {
         private static final DocumentVersionRepository DOCUMENT_VERSION_REPOSITORY = Mockito.mock(DocumentVersionRepository.class);
         private static final ApprovalRepository APPROVAL_REPOSITORY = Mockito.mock(ApprovalRepository.class);
         private static final UserRepository USER_REPOSITORY = Mockito.mock(UserRepository.class);
+        private static final AuditLogService AUDIT_LOG_SERVICE = Mockito.mock(AuditLogService.class);
 
         @Bean
         DocumentRepository documentRepository() {
@@ -79,12 +80,23 @@ class ServiceMethodSecurityTest {
         }
 
         @Bean
+        AuditLogService auditLogService() {
+            return AUDIT_LOG_SERVICE;
+        }
+
+        @Bean
         DocumentService documentService(
                 DocumentRepository documentRepository,
                 DocumentVersionRepository documentVersionRepository,
-                UserRepository userRepository
+                UserRepository userRepository,
+                AuditLogService auditLogService
         ) {
-            return new DocumentService(documentRepository, documentVersionRepository, userRepository);
+            return new DocumentService(
+                    documentRepository,
+                    documentVersionRepository,
+                    userRepository,
+                    auditLogService
+            );
         }
 
         @Bean
@@ -92,13 +104,15 @@ class ServiceMethodSecurityTest {
                 DocumentVersionRepository documentVersionRepository,
                 DocumentRepository documentRepository,
                 ApprovalRepository approvalRepository,
-                UserRepository userRepository
+                UserRepository userRepository,
+                AuditLogService auditLogService
         ) {
             return new DocumentVersionService(
                     documentVersionRepository,
                     documentRepository,
                     approvalRepository,
-                    userRepository
+                    userRepository,
+                    auditLogService
             );
         }
 
@@ -106,9 +120,15 @@ class ServiceMethodSecurityTest {
         ApprovalService approvalService(
                 ApprovalRepository approvalRepository,
                 DocumentVersionRepository documentVersionRepository,
-                UserRepository userRepository
+                UserRepository userRepository,
+                AuditLogService auditLogService
         ) {
-            return new ApprovalService(approvalRepository, documentVersionRepository, userRepository);
+            return new ApprovalService(
+                    approvalRepository,
+                    documentVersionRepository,
+                    userRepository,
+                    auditLogService
+            );
         }
     }
 
@@ -127,7 +147,8 @@ class ServiceMethodSecurityTest {
                 MethodSecurityTestConfig.DOCUMENT_REPOSITORY,
                 MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY,
                 MethodSecurityTestConfig.APPROVAL_REPOSITORY,
-                MethodSecurityTestConfig.USER_REPOSITORY
+                MethodSecurityTestConfig.USER_REPOSITORY,
+                MethodSecurityTestConfig.AUDIT_LOG_SERVICE
         );
     }
 
@@ -227,6 +248,11 @@ class ServiceMethodSecurityTest {
         DocumentVersion version = new DocumentVersion();
         version.setId(1);
         version.setStatus(VersionStatus.IN_REVIEW);
+        version.setVersionNumber(1);
+
+        Document document = new Document();
+        document.setId(5);
+        version.setDocument(document);
 
         User reviewer = createUser(100, "reviewer.local", "REVIEWER");
 
@@ -260,6 +286,11 @@ class ServiceMethodSecurityTest {
         DocumentVersion version = new DocumentVersion();
         version.setId(1);
         version.setStatus(VersionStatus.IN_REVIEW);
+        version.setVersionNumber(1);
+
+        Document document = new Document();
+        document.setId(5);
+        version.setDocument(document);
 
         User reviewer = createUser(100, "admin.local", "ADMIN");
 
@@ -288,8 +319,10 @@ class ServiceMethodSecurityTest {
     }
 
     @Test
-    @WithMockUser(roles = "REVIEWER")
+    @WithMockUser(username = "reviewer.local", roles = "REVIEWER")
     void publishVersion_allowsReviewer() {
+        User reviewer = createUser(1, "reviewer.local", "REVIEWER");
+
         Document document = new Document();
         document.setId(1);
         document.setTitle("Spec");
@@ -301,6 +334,8 @@ class ServiceMethodSecurityTest {
         version.setVersionNumber(2);
         version.setStatus(VersionStatus.APPROVED);
 
+        when(MethodSecurityTestConfig.USER_REPOSITORY.findByUsername("reviewer.local"))
+                .thenReturn(Optional.of(reviewer));
         when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(10))
                 .thenReturn(Optional.of(version));
         when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.save(any(DocumentVersion.class)))
@@ -318,8 +353,10 @@ class ServiceMethodSecurityTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(username = "admin.local", roles = "ADMIN")
     void rollbackVersion_allowsAdmin() {
+        User admin = createUser(1, "admin.local", "ADMIN");
+
         Document document = new Document();
         document.setId(1);
         document.setTitle("Spec");
@@ -331,6 +368,8 @@ class ServiceMethodSecurityTest {
         version.setVersionNumber(1);
         version.setStatus(VersionStatus.PUBLISHED);
 
+        when(MethodSecurityTestConfig.USER_REPOSITORY.findByUsername("admin.local"))
+                .thenReturn(Optional.of(admin));
         when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.findById(10))
                 .thenReturn(Optional.of(version));
         when(MethodSecurityTestConfig.DOCUMENT_VERSION_REPOSITORY.save(any(DocumentVersion.class)))
