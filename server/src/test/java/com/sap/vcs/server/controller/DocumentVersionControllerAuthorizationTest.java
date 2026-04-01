@@ -34,6 +34,8 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.hamcrest.Matchers.containsString;
 
 @WebMvcTest(DocumentVersionController.class)
 @Import({
@@ -153,5 +155,33 @@ class DocumentVersionControllerAuthorizationTest {
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createVersion_returnsBadRequest_whenContentIsBlank() throws Exception {
+        DocumentVersionRequestDto request = new DocumentVersionRequestDto();
+        request.setContent("   ");
+        request.setMessage("Revision");
+
+        mockMvc.perform(post("/documents/1/versions")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createVersion_returnsValidationErrorResponse_whenContentIsBlank() throws Exception {
+        DocumentVersionRequestDto request = new DocumentVersionRequestDto();
+        request.setContent("   ");
+        request.setMessage("Revision");
+
+        mockMvc.perform(post("/documents/1/versions")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message", containsString("content")))
+                .andExpect(jsonPath("$.path").value("/documents/1/versions"));
     }
 }

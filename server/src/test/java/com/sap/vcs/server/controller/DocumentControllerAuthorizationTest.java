@@ -40,6 +40,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.hamcrest.Matchers.containsString;
 
 @WebMvcTest(DocumentController.class)
 @Import({
@@ -280,5 +281,61 @@ class DocumentControllerAuthorizationTest {
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createDocument_returnsBadRequest_whenTitleIsBlank() throws Exception {
+        DocumentRequestDto request = new DocumentRequestDto();
+        request.setTitle("   ");
+        request.setDescription("Description");
+
+        mockMvc.perform(post("/documents")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createDocument_returnsBadRequest_whenTitleIsTooShort() throws Exception {
+        DocumentRequestDto request = new DocumentRequestDto();
+        request.setTitle("ab");
+        request.setDescription("Description");
+
+        mockMvc.perform(post("/documents")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createDocument_returnsValidationErrorResponse_whenTitleIsBlank() throws Exception {
+        DocumentRequestDto request = new DocumentRequestDto();
+        request.setTitle("   ");
+        request.setDescription("Description");
+
+        mockMvc.perform(post("/documents")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message", containsString("title")))
+                .andExpect(jsonPath("$.path").value("/documents"));
+    }
+
+    @Test
+    @WithMockUser(roles = "REVIEWER")
+    void getDocumentById_returnsNotFoundErrorResponse() throws Exception {
+        when(documentService.getDocumentById(999))
+                .thenThrow(new ResourceNotFoundException("Document not found with id: 999"));
+
+        mockMvc.perform(get("/documents/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Document not found with id: 999"))
+                .andExpect(jsonPath("$.path").value("/documents/999"));
     }
 }
