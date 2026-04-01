@@ -3,6 +3,7 @@ package com.sap.vcs.server.service;
 import com.sap.vcs.server.entity.Role;
 import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
+import com.sap.vcs.server.repository.RoleRepository;
 import com.sap.vcs.server.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,10 +16,16 @@ import java.util.Set;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -48,5 +55,19 @@ public class UserService {
 
         user.updateEncodedPassword(passwordEncoder.encode(rawPassword));
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateUserRole(Integer userId, String roleName) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found with id: " + userId));
+
+        Role role = roleRepository.findByName(roleName.toUpperCase())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Role not found: " + roleName));
+
+        user.setRoles(Set.of(role));
+        userRepository.save(user);
     }
 }
