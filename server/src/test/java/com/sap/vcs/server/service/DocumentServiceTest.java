@@ -37,6 +37,9 @@ class DocumentServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AuditLogService auditLogService;
+
     @InjectMocks
     private DocumentService documentService;
 

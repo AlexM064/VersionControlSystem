@@ -7,6 +7,7 @@ import com.sap.vcs.server.dto.PublishDocumentResponseDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
+import com.sap.vcs.server.entity.enums.AuditActionType;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.exception.BusinessRuleViolationException;
@@ -32,17 +33,20 @@ public class DocumentVersionService {
     private final DocumentRepository documentRepository;
     private final ApprovalRepository approvalRepository;
     private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
 
     public DocumentVersionService(
             DocumentVersionRepository versionRepository,
             DocumentRepository documentRepository,
             ApprovalRepository approvalRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            AuditLogService auditLogService
     ) {
         this.versionRepository = versionRepository;
         this.documentRepository = documentRepository;
         this.approvalRepository = approvalRepository;
         this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
     }
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
@@ -70,6 +74,15 @@ public class DocumentVersionService {
         version.setCreatedBy(currentUser);
 
         DocumentVersion savedVersion = versionRepository.save(version);
+
+        auditLogService.log(
+                AuditActionType.VERSION_CREATED,
+                "DOCUMENT_VERSION",
+                savedVersion.getId(),
+                currentUser.getUsername(),
+                "Created version " + savedVersion.getVersionNumber() + " for document " + document.getId()
+        );
+
         return mapToResponse(savedVersion);
     }
 
@@ -95,7 +108,18 @@ public class DocumentVersionService {
         validateDocumentIsNotArchived(version.getDocument());
         validatePublishRules(version);
 
-        return applyPublishedVersion(version);
+        PublishDocumentResponseDto response = applyPublishedVersion(version);
+
+        String username = getCurrentAuthenticatedUser().getUsername();
+        auditLogService.log(
+                AuditActionType.VERSION_PUBLISHED,
+                "DOCUMENT_VERSION",
+                version.getId(),
+                username,
+                "Published version " + version.getVersionNumber() + " for document " + version.getDocument().getId()
+        );
+
+        return response;
     }
 
     @Transactional
@@ -108,7 +132,18 @@ public class DocumentVersionService {
         validateDocumentIsNotArchived(version.getDocument());
         validateRollbackRules(version);
 
-        return applyPublishedVersion(version);
+        PublishDocumentResponseDto response = applyPublishedVersion(version);
+
+        String username = getCurrentAuthenticatedUser().getUsername();
+        auditLogService.log(
+                AuditActionType.VERSION_ROLLED_BACK,
+                "DOCUMENT_VERSION",
+                version.getId(),
+                username,
+                "Rolled back to version " + version.getVersionNumber() + " for document " + version.getDocument().getId()
+        );
+
+        return response;
     }
 
     @Transactional
@@ -132,6 +167,15 @@ public class DocumentVersionService {
         version.setStatus(VersionStatus.IN_REVIEW);
 
         DocumentVersion saved = versionRepository.save(version);
+
+        auditLogService.log(
+                AuditActionType.VERSION_SUBMITTED_FOR_REVIEW,
+                "DOCUMENT_VERSION",
+                saved.getId(),
+                currentUser.getUsername(),
+                "Submitted version " + saved.getVersionNumber() + " for review"
+        );
+
         return mapToResponse(saved);
     }
 

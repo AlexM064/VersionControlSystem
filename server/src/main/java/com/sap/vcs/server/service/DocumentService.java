@@ -8,6 +8,7 @@ import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
+import com.sap.vcs.server.entity.enums.AuditActionType;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
@@ -32,13 +33,16 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentVersionRepository documentVersionRepository;
     private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
 
     public DocumentService(DocumentRepository documentRepository,
                            DocumentVersionRepository documentVersionRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           AuditLogService auditLogService) {
         this.documentRepository = documentRepository;
         this.documentVersionRepository = documentVersionRepository;
         this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
     }
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
@@ -51,6 +55,15 @@ public class DocumentService {
         document.setOwner(currentUser);
 
         Document savedDocument = documentRepository.save(document);
+
+        auditLogService.log(
+                AuditActionType.DOCUMENT_CREATED,
+                "DOCUMENT",
+                savedDocument.getId(),
+                currentUser.getUsername(),
+                "Document created with title: " + savedDocument.getTitle()
+        );
+
         return mapToResponse(savedDocument);
     }
 
@@ -101,6 +114,14 @@ public class DocumentService {
 
         document.setStatus(DocumentStatus.ARCHIVED);
         documentRepository.save(document);
+
+        auditLogService.log(
+                AuditActionType.DOCUMENT_ARCHIVED,
+                "DOCUMENT",
+                document.getId(),
+                currentUser.getUsername(),
+                "Document archived"
+        );
     }
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
@@ -147,6 +168,15 @@ public class DocumentService {
         document.setDescription(request.getDescription());
 
         Document updatedDocument = documentRepository.save(document);
+
+        auditLogService.log(
+                AuditActionType.DOCUMENT_UPDATED,
+                "DOCUMENT",
+                updatedDocument.getId(),
+                currentUser.getUsername(),
+                "Document metadata updated"
+        );
+
         return mapToResponse(updatedDocument);
     }
 
