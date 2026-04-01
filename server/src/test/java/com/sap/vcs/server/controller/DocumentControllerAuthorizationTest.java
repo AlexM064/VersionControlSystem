@@ -1,13 +1,14 @@
 package com.sap.vcs.server.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sap.vcs.server.dto.*;
+import com.sap.vcs.server.dto.CompareVersionsResponseDto;
+import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
+import com.sap.vcs.server.dto.DocumentRequestDto;
+import com.sap.vcs.server.dto.DocumentResponseDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.security.CustomUserDetailsService;
 import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
@@ -16,6 +17,9 @@ import com.sap.vcs.server.security.jwt.JwtAuthenticationFilter;
 import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.DocumentService;
 import com.sap.vcs.server.service.DocumentVersionService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -39,7 +44,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 @WebMvcTest(DocumentController.class)
 @Import({
@@ -86,7 +90,16 @@ class DocumentControllerAuthorizationTest {
     void getDocuments_allowsAuthor() throws Exception {
         when(documentService.getAllDocuments(eq(null), eq(null), any()))
                 .thenReturn(new PageImpl<>(
-                        List.of(new DocumentResponseDto(1, "Spec", "Description", "DRAFT", null)),
+                        List.of(new DocumentResponseDto(
+                                1,
+                                "Spec",
+                                "Description",
+                                "ACTIVE",
+                                null,
+                                "author.local",
+                                LocalDateTime.now(),
+                                LocalDateTime.now()
+                        )),
                         PageRequest.of(0, 10),
                         1
                 ));
@@ -100,6 +113,12 @@ class DocumentControllerAuthorizationTest {
     void getDocuments_forbidsReader() throws Exception {
         mockMvc.perform(get("/documents"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getDocuments_requiresAuthentication() throws Exception {
+        mockMvc.perform(get("/documents"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -156,16 +175,19 @@ class DocumentControllerAuthorizationTest {
     }
 
     @Test
-    void getDocuments_requiresAuthentication() throws Exception {
-        mockMvc.perform(get("/documents"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
     @WithMockUser(roles = "REVIEWER")
     void getDocumentById_allowsReviewer() throws Exception {
         when(documentService.getDocumentById(1))
-                .thenReturn(new DocumentResponseDto(1, "Spec", "Description", "DRAFT", null));
+                .thenReturn(new DocumentResponseDto(
+                        1,
+                        "Spec",
+                        "Description",
+                        "ACTIVE",
+                        null,
+                        "author.local",
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                ));
 
         mockMvc.perform(get("/documents/1"))
                 .andExpect(status().isOk());
@@ -249,7 +271,16 @@ class DocumentControllerAuthorizationTest {
         request.setDescription("Description");
 
         when(documentService.createDocument(any(DocumentRequestDto.class)))
-                .thenReturn(new DocumentResponseDto(1, "New document", "Description", "DRAFT", null,"author.local",LocalDateTime.now(),LocalDateTime.now() ));
+                .thenReturn(new DocumentResponseDto(
+                        1,
+                        "New document",
+                        "Description",
+                        "ACTIVE",
+                        null,
+                        "author.local",
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                ));
 
         mockMvc.perform(post("/documents")
                         .contentType(APPLICATION_JSON)
@@ -280,5 +311,62 @@ class DocumentControllerAuthorizationTest {
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createDocument_returnsBadRequest_whenTitleIsBlank() throws Exception {
+        DocumentRequestDto request = new DocumentRequestDto();
+        request.setTitle("   ");
+        request.setDescription("Description");
+
+        mockMvc.perform(post("/documents")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createDocument_returnsBadRequest_whenTitleIsTooShort() throws Exception {
+        DocumentRequestDto request = new DocumentRequestDto();
+        request.setTitle("ab");
+        request.setDescription("Description");
+
+        mockMvc.perform(post("/documents")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createDocument_returnsValidationErrorResponse_whenTitleIsBlank() throws Exception {
+        DocumentRequestDto request = new DocumentRequestDto();
+        request.setTitle("   ");
+        request.setDescription("Description");
+
+        mockMvc.perform(post("/documents")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message", containsString("title")))
+                .andExpect(jsonPath("$.path").value("/documents"));
+    }
+
+    @Test
+    @WithMockUser(roles = "REVIEWER")
+    void getDocumentById_returnsNotFoundErrorResponse() throws Exception {
+        when(documentService.getDocumentById(999))
+                .thenThrow(new ResourceNotFoundException("Document not found with id: 999"));
+
+        mockMvc.perform(get("/documents/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Document not found with id: 999"))
+                .andExpect(jsonPath("$.path").value("/documents/999"));
     }
 }

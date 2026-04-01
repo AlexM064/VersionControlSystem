@@ -1,9 +1,6 @@
 package com.sap.vcs.server.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
 import com.sap.vcs.server.dto.DocumentVersionRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.entity.enums.VersionStatus;
@@ -14,6 +11,9 @@ import com.sap.vcs.server.security.SecurityConfig;
 import com.sap.vcs.server.security.jwt.JwtAuthenticationFilter;
 import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.DocumentVersionService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -33,6 +34,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DocumentVersionController.class)
@@ -85,7 +87,8 @@ class DocumentVersionControllerAuthorizationTest {
                                 "Initial",
                                 VersionStatus.DRAFT,
                                 "author.local",
-                                LocalDateTime.now())
+                                LocalDateTime.now()
+                        )
                 ));
 
         mockMvc.perform(get("/documents/1/versions"))
@@ -153,5 +156,35 @@ class DocumentVersionControllerAuthorizationTest {
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createVersion_returnsBadRequest_whenContentIsBlank() throws Exception {
+        DocumentVersionRequestDto request = new DocumentVersionRequestDto();
+        request.setContent("   ");
+        request.setMessage("Revision");
+
+        mockMvc.perform(post("/documents/1/versions")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createVersion_returnsValidationErrorResponse_whenContentIsBlank() throws Exception {
+        DocumentVersionRequestDto request = new DocumentVersionRequestDto();
+        request.setContent("   ");
+        request.setMessage("Revision");
+
+        mockMvc.perform(post("/documents/1/versions")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message", containsString("content")))
+                .andExpect(jsonPath("$.path").value("/documents/1/versions"));
     }
 }
