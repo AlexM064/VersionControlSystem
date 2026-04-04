@@ -22,7 +22,6 @@ public class ApprovalService {
 
     private final ApprovalRepository approvalRepository;
     private final DocumentVersionRepository documentVersionRepository;
-    private final UserRepository userRepository;
     private final AuditLogService auditLogService;
     private final AuthenticatedUserService authenticatedUserService;
 
@@ -33,13 +32,17 @@ public class ApprovalService {
                            AuthenticatedUserService authenticatedUserService) {
         this.approvalRepository = approvalRepository;
         this.documentVersionRepository = documentVersionRepository;
-        this.userRepository = userRepository;
         this.auditLogService = auditLogService;
         this.authenticatedUserService = authenticatedUserService;
     }
 
-    @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
-    public ApprovalResponseDto approve(Integer versionId) {
+    private ApprovalResponseDto processDecision(
+            Integer versionId,
+            ApprovalDecision decision,
+            VersionStatus targetStatus,
+            AuditActionType auditActionType,
+            String actionVerb
+    ) {
         DocumentVersion version = documentVersionRepository.findById(versionId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
@@ -51,26 +54,26 @@ public class ApprovalService {
 
         if (version.getStatus() != VersionStatus.IN_REVIEW) {
             throw new BusinessRuleViolationException(
-                    "Only IN_REVIEW versions can be approved"
+                    "Only IN_REVIEW versions can be " + actionVerb.toLowerCase()
             );
         }
 
         approval.setVersion(version);
         approval.setReviewer(reviewer);
-        approval.setDecision(ApprovalDecision.APPROVED);
+        approval.setDecision(decision);
         approval.setDecidedAt(LocalDateTime.now());
 
-        version.setStatus(VersionStatus.APPROVED);
+        version.setStatus(targetStatus);
 
         Approval savedApproval = approvalRepository.save(approval);
         documentVersionRepository.save(version);
 
         auditLogService.log(
-                AuditActionType.VERSION_APPROVED,
+                auditActionType,
                 "DOCUMENT_VERSION",
                 version.getId(),
                 reviewer.getUsername(),
-                "Approved version " + version.getVersionNumber() +
+                actionVerb + " version " + version.getVersionNumber() +
                         " for document " + version.getDocument().getId()
         );
 
@@ -78,42 +81,25 @@ public class ApprovalService {
     }
 
     @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
-    public ApprovalResponseDto reject(Integer versionId) {
-        DocumentVersion version = documentVersionRepository.findById(versionId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Version not found with id: " + versionId));
-
-        User reviewer = authenticatedUserService.getCurrentUser();
-
-        Approval approval = approvalRepository.findByVersionAndReviewer(version, reviewer)
-                .orElseGet(Approval::new);
-
-        if (version.getStatus() != VersionStatus.IN_REVIEW) {
-            throw new BusinessRuleViolationException(
-                    "Only IN_REVIEW versions can be rejected"
-            );
-        }
-
-        approval.setVersion(version);
-        approval.setReviewer(reviewer);
-        approval.setDecision(ApprovalDecision.REJECTED);
-        approval.setDecidedAt(LocalDateTime.now());
-
-        version.setStatus(VersionStatus.REJECTED);
-
-        Approval savedApproval = approvalRepository.save(approval);
-        documentVersionRepository.save(version);
-
-        auditLogService.log(
-                AuditActionType.VERSION_REJECTED,
-                "DOCUMENT_VERSION",
-                version.getId(),
-                reviewer.getUsername(),
-                "Rejected version " + version.getVersionNumber() +
-                        " for document " + version.getDocument().getId()
+    public ApprovalResponseDto approve(Integer versionId) {
+        return processDecision(
+                versionId,
+                ApprovalDecision.APPROVED,
+                VersionStatus.APPROVED,
+                AuditActionType.VERSION_APPROVED,
+                "Approved"
         );
+    }
 
-        return mapToResponse(savedApproval);
+    @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
+    public ApprovalResponseDto reject(Integer versionId) {
+        return processDecision(
+                versionId,
+                ApprovalDecision.REJECTED,
+                VersionStatus.REJECTED,
+                AuditActionType.VERSION_REJECTED,
+                "Rejected"
+        );
     }
 
     private ApprovalResponseDto mapToResponse(Approval approval) {
@@ -126,4 +112,5 @@ public class ApprovalService {
                 approval.getDecidedAt()
         );
     }
+
 }
