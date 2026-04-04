@@ -85,6 +85,11 @@ class ServiceMethodSecurityTest {
         }
 
         @Bean
+        AuthenticatedUserService authenticatedUserService(UserRepository userRepository) {
+            return new AuthenticatedUserService(userRepository);
+        }
+
+        @Bean
         DocumentService documentService(
                 DocumentRepository documentRepository,
                 DocumentVersionRepository documentVersionRepository,
@@ -121,13 +126,15 @@ class ServiceMethodSecurityTest {
                 ApprovalRepository approvalRepository,
                 DocumentVersionRepository documentVersionRepository,
                 UserRepository userRepository,
-                AuditLogService auditLogService
+                AuditLogService auditLogService,
+                AuthenticatedUserService authenticatedUserService
         ) {
             return new ApprovalService(
                     approvalRepository,
                     documentVersionRepository,
                     userRepository,
-                    auditLogService
+                    auditLogService,
+                    authenticatedUserService
             );
         }
     }

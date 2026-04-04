@@ -13,8 +13,6 @@ import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -26,15 +24,18 @@ public class ApprovalService {
     private final DocumentVersionRepository documentVersionRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final AuthenticatedUserService authenticatedUserService;
 
     public ApprovalService(ApprovalRepository approvalRepository,
                            DocumentVersionRepository documentVersionRepository,
                            UserRepository userRepository,
-                           AuditLogService auditLogService) {
+                           AuditLogService auditLogService,
+                           AuthenticatedUserService authenticatedUserService) {
         this.approvalRepository = approvalRepository;
         this.documentVersionRepository = documentVersionRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.authenticatedUserService = authenticatedUserService;
     }
 
     @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
@@ -43,7 +44,7 @@ public class ApprovalService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
-        User reviewer = getCurrentAuthenticatedUser();
+        User reviewer = authenticatedUserService.getCurrentUser();
 
         Approval approval = approvalRepository.findByVersionAndReviewer(version, reviewer)
                 .orElseGet(Approval::new);
@@ -82,7 +83,7 @@ public class ApprovalService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Version not found with id: " + versionId));
 
-        User reviewer = getCurrentAuthenticatedUser();
+        User reviewer = authenticatedUserService.getCurrentUser();
 
         Approval approval = approvalRepository.findByVersionAndReviewer(version, reviewer)
                 .orElseGet(Approval::new);
@@ -113,20 +114,6 @@ public class ApprovalService {
         );
 
         return mapToResponse(savedApproval);
-    }
-
-    private User getCurrentAuthenticatedUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
-            throw new IllegalStateException("No authenticated user available in security context");
-        }
-
-        return userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Authenticated user not found with username: " + authentication.getName()
-                        ));
     }
 
     private ApprovalResponseDto mapToResponse(Approval approval) {
