@@ -4,7 +4,6 @@ import com.sap.vcs.server.dto.UpdateUserRoleRequestDto;
 import com.sap.vcs.server.dto.auth.AuthResponseDto;
 import com.sap.vcs.server.dto.auth.MeResponseDto;
 import com.sap.vcs.server.dto.auth.RegisterRequestDto;
-import com.sap.vcs.server.service.AuthService;
 import com.sap.vcs.server.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,17 +20,15 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
-    private final AuthService authService;
 
-    public UserController(UserService userService, AuthService authService) {
+    public UserController(UserService userService) {
         this.userService = userService;
-        this.authService = authService;
     }
 
     @PostMapping
     @Operation(summary = "Register a new user")
     public AuthResponseDto register(@Valid @RequestBody RegisterRequestDto request) {
-        return authService.register(request);
+        return userService.register(request);
     }
 
     @GetMapping("/me")
@@ -41,7 +38,7 @@ public class UserController {
         if (authentication == null) {
             throw new RuntimeException("Authentication is required");
         }
-        return authService.me(authentication.getName());
+        return userService.me(authentication.getName());
     }
 
     @PatchMapping("/{id}/role")
