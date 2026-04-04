@@ -63,22 +63,34 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Public endpoints
-                        .requestMatchers(HttpMethod.GET, "/test", API_V1_PREFIX + "/test").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
+                        // =========================
+                        // PUBLIC ENDPOINTS
+                        // =========================
+
+                        // Legacy endpoints (frontend compatibility)
+                        .requestMatchers("/auth/login", "/auth/register").permitAll()
+
+                        // Versioned API endpoints
                         .requestMatchers(HttpMethod.POST, API_V1_PREFIX + "/tokens").permitAll()
                         .requestMatchers(HttpMethod.POST, API_V1_PREFIX + "/users").permitAll()
+
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        // Current user profile endpoints must be authenticated
+                        // =========================
+                        // AUTHENTICATED PROFILE
+                        // =========================
+
                         .requestMatchers(HttpMethod.GET, "/auth/me", API_V1_PREFIX + "/users/me")
                         .authenticated()
 
-                        // Documents - read
+                        // =========================
+                        // DOCUMENTS - READ
+                        // =========================
+
                         .requestMatchers(HttpMethod.GET, "/documents", API_V1_PREFIX + "/documents")
                         .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
 
@@ -127,7 +139,10 @@ public class SecurityConfig {
                         )
                         .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
 
-                        // Documents - write
+                        // =========================
+                        // DOCUMENTS - WRITE
+                        // =========================
+
                         .requestMatchers(HttpMethod.POST, "/documents", API_V1_PREFIX + "/documents")
                         .hasAnyRole("AUTHOR", "ADMIN")
 
@@ -141,7 +156,10 @@ public class SecurityConfig {
                         )
                         .hasAnyRole("AUTHOR", "ADMIN")
 
-                        // Versions
+                        // =========================
+                        // VERSIONS
+                        // =========================
+
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/documents/*/versions",
@@ -156,7 +174,10 @@ public class SecurityConfig {
                         )
                         .hasAnyRole("AUTHOR", "ADMIN")
 
-                        // Approval workflow
+                        // =========================
+                        // APPROVAL WORKFLOW
+                        // =========================
+
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/versions/*/approve",
@@ -185,11 +206,13 @@ public class SecurityConfig {
                         )
                         .hasAnyRole("REVIEWER", "ADMIN")
 
-                        // User management
+                        // =========================
+                        // USER MANAGEMENT
+                        // =========================
+
                         .requestMatchers(
                                 HttpMethod.PATCH,
                                 "/users/*/role",
-                                API_V1_PREFIX + "/users/*",
                                 API_V1_PREFIX + "/users/*/role"
                         )
                         .hasRole("ADMIN")
