@@ -27,6 +27,8 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private static final String API_V1_PREFIX = "/api/v1";
+
     private final CustomUserDetailsService customUserDetailsService;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final RestAccessDeniedHandler restAccessDeniedHandler;
@@ -61,49 +63,135 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "/test").permitAll()
+                        // Public endpoints
+                        .requestMatchers(HttpMethod.GET, "/test", API_V1_PREFIX + "/test").permitAll()
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(
+                                API_V1_PREFIX + "/tokens/**",
+                                API_V1_PREFIX + "/users",
+                                API_V1_PREFIX + "/users/me"
+                        ).permitAll()
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "/documents")
+                        // Documents - read
+                        .requestMatchers(HttpMethod.GET, "/documents", API_V1_PREFIX + "/documents")
                         .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/documents/*")
+                        .requestMatchers(HttpMethod.GET, "/documents/*", API_V1_PREFIX + "/documents/*")
                         .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/documents/*/history")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/documents/*/history",
+                                API_V1_PREFIX + "/documents/*/history"
+                        )
                         .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/documents/*/versions")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/documents/*/versions",
+                                API_V1_PREFIX + "/documents/*/versions"
+                        )
                         .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/documents/*/published-version")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/documents/compare",
+                                API_V1_PREFIX + "/documents/compare"
+                        )
+                        .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/documents/*/published-version",
+                                API_V1_PREFIX + "/documents/*/published-version"
+                        )
                         .hasAnyRole("READER", "AUTHOR", "REVIEWER", "ADMIN")
 
-                        .requestMatchers(HttpMethod.POST, "/documents")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/documents/*/published-version/pdf",
+                                API_V1_PREFIX + "/documents/*/published-version/pdf"
+                        )
+                        .hasAnyRole("READER", "AUTHOR", "REVIEWER", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/documents/*/versions/*/pdf",
+                                API_V1_PREFIX + "/documents/*/versions/*/pdf"
+                        )
+                        .hasAnyRole("AUTHOR", "REVIEWER", "ADMIN")
+
+                        // Documents - write
+                        .requestMatchers(HttpMethod.POST, "/documents", API_V1_PREFIX + "/documents")
                         .hasAnyRole("AUTHOR", "ADMIN")
 
-                        .requestMatchers(HttpMethod.PUT, "/documents/*")
+                        .requestMatchers(HttpMethod.PUT, "/documents/*", API_V1_PREFIX + "/documents/*")
                         .hasAnyRole("AUTHOR", "ADMIN")
 
-                        .requestMatchers(HttpMethod.POST, "/documents/*/versions")
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/documents/*/archive",
+                                API_V1_PREFIX + "/documents/*/archive"
+                        )
                         .hasAnyRole("AUTHOR", "ADMIN")
 
-                        .requestMatchers(HttpMethod.POST, "/versions/*/approve")
+                        // Versions
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/documents/*/versions",
+                                API_V1_PREFIX + "/documents/*/versions"
+                        )
+                        .hasAnyRole("AUTHOR", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/documents/*/versions/*/submit",
+                                API_V1_PREFIX + "/documents/*/versions/*/submit"
+                        )
+                        .hasAnyRole("AUTHOR", "ADMIN")
+
+                        // Approval workflow
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/versions/*/approve",
+                                API_V1_PREFIX + "/versions/*/approve"
+                        )
                         .hasAnyRole("REVIEWER", "ADMIN")
 
-                        .requestMatchers(HttpMethod.POST, "/versions/*/reject")
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/versions/*/reject",
+                                API_V1_PREFIX + "/versions/*/reject"
+                        )
                         .hasAnyRole("REVIEWER", "ADMIN")
 
-                        .requestMatchers(HttpMethod.POST, "/versions/*/publish")
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/versions/*/publish",
+                                API_V1_PREFIX + "/versions/*/publish"
+                        )
                         .hasAnyRole("REVIEWER", "ADMIN")
 
-                        .requestMatchers(HttpMethod.POST, "/versions/*/rollback")
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/versions/*/rollback",
+                                API_V1_PREFIX + "/versions/*/rollback"
+                        )
                         .hasAnyRole("REVIEWER", "ADMIN")
+
+                        // User management
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/users/*/role",
+                                API_V1_PREFIX + "/users/*",
+                                API_V1_PREFIX + "/users/*/role"
+                        )
+                        .hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 );
