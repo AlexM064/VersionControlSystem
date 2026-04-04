@@ -12,6 +12,7 @@ import com.sap.vcs.server.security.SecurityConfig;
 import com.sap.vcs.server.security.jwt.JwtAuthenticationFilter;
 import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.AuthService;
+import com.sap.vcs.server.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
@@ -50,6 +51,9 @@ class AuthControllerAuthorizationTest {
 
     @MockBean
     private AuthService authService;
+
+    @MockBean
+    private UserService userService;
 
     @MockBean
     private CustomUserDetailsService customUserDetailsService;
@@ -100,7 +104,7 @@ class AuthControllerAuthorizationTest {
         request.setEmail("new-user@example.com");
         request.setPassword("password123");
 
-        when(authService.register(any(RegisterRequestDto.class)))
+        when(userService.register(any(RegisterRequestDto.class)))
                 .thenReturn(new AuthResponseDto(
                         "jwt-token",
                         "new-user",
@@ -125,7 +129,7 @@ class AuthControllerAuthorizationTest {
     @Test
     @WithMockUser(username = "author-user", roles = "AUTHOR")
     void me_allowsAuthenticatedUser() throws Exception {
-        when(authService.me(eq("author-user")))
+        when(userService.me(eq("author-user")))
                 .thenReturn(new MeResponseDto(
                         "author-user",
                         "author-user@example.com",
