@@ -65,17 +65,18 @@ public class SecurityConfig {
 
                         // Public endpoints
                         .requestMatchers(HttpMethod.GET, "/test", API_V1_PREFIX + "/test").permitAll()
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers(
-                                API_V1_PREFIX + "/tokens/**",
-                                API_V1_PREFIX + "/users",
-                                API_V1_PREFIX + "/users/me"
-                        ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, API_V1_PREFIX + "/tokens").permitAll()
+                        .requestMatchers(HttpMethod.POST, API_V1_PREFIX + "/users").permitAll()
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
+
+                        // Current user profile endpoints must be authenticated
+                        .requestMatchers(HttpMethod.GET, "/auth/me", API_V1_PREFIX + "/users/me")
+                        .authenticated()
 
                         // Documents - read
                         .requestMatchers(HttpMethod.GET, "/documents", API_V1_PREFIX + "/documents")
