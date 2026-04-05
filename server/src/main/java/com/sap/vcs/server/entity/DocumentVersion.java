@@ -1,10 +1,11 @@
 package com.sap.vcs.server.entity;
 
+import com.sap.vcs.server.entity.enums.VersionStatus;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import com.sap.vcs.server.entity.enums.VersionStatus;
 
 @Entity
 @Table(name = "document_versions",
@@ -42,12 +43,12 @@ public class DocumentVersion {
     @OneToMany(mappedBy = "version", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Approval> approvals = new ArrayList<>();
 
-    public DocumentVersion() {
-    }
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+    }
+
+    public DocumentVersion() {
     }
 
     // getters & setters omitted for brevity

@@ -1,11 +1,6 @@
 package com.sap.vcs.server;
 
-import com.sap.vcs.server.repository.ApprovalRepository;
-import com.sap.vcs.server.repository.AuditLogRepository;
-import com.sap.vcs.server.repository.DocumentRepository;
-import com.sap.vcs.server.repository.DocumentVersionRepository;
-import com.sap.vcs.server.repository.RoleRepository;
-import com.sap.vcs.server.repository.UserRepository;
+import com.sap.vcs.server.repository.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -15,6 +10,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 				"spring.flyway.enabled=false",
 				"spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration"
 		}
+
 )
 class ServerApplicationTests {
 
@@ -36,7 +32,8 @@ class ServerApplicationTests {
 	@MockBean
 	private AuditLogRepository auditLogRepository;
 
-	@Test
-	void contextLoads() {
-	}
+    @Test
+    void contextLoads() {
+    }
+
 }

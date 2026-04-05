@@ -1,16 +1,15 @@
 package com.sap.vcs.server.controller;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
 import com.sap.vcs.server.dto.PublishDocumentResponseDto;
 import com.sap.vcs.server.security.CustomUserDetailsService;
 import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
 import com.sap.vcs.server.security.SecurityConfig;
 import com.sap.vcs.server.security.jwt.JwtAuthenticationFilter;
-import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.DocumentVersionService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,9 +41,6 @@ class VersionWorkflowControllerAuthorizationTest {
 
     @MockBean
     private CustomUserDetailsService customUserDetailsService;
-
-    @MockBean
-    private JwtService jwtService;
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
