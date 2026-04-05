@@ -2,7 +2,6 @@ package com.sap.vcs.server.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sap.vcs.server.exception.ErrorResponse;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -27,7 +26,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
             HttpServletRequest request,
             HttpServletResponse response,
             AuthenticationException authException
-    ) throws IOException, ServletException {
+    ) throws IOException {
 
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),

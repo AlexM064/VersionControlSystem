@@ -3,7 +3,9 @@ package com.sap.vcs.server.security;
 import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.repository.UserRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.security.core.userdetails.*;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service

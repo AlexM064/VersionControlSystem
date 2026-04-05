@@ -12,7 +12,6 @@ import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.entity.enums.VersionStatus;
 import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
-import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import com.sap.vcs.server.repository.UserRepository;
@@ -31,20 +30,17 @@ public class DocumentVersionService {
 
     private final DocumentVersionRepository versionRepository;
     private final DocumentRepository documentRepository;
-    private final ApprovalRepository approvalRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
 
     public DocumentVersionService(
             DocumentVersionRepository versionRepository,
             DocumentRepository documentRepository,
-            ApprovalRepository approvalRepository,
             UserRepository userRepository,
             AuditLogService auditLogService
     ) {
         this.versionRepository = versionRepository;
         this.documentRepository = documentRepository;
-        this.approvalRepository = approvalRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
     }

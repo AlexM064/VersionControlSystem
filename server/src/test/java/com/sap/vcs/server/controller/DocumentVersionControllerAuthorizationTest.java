@@ -9,7 +9,6 @@ import com.sap.vcs.server.security.RestAccessDeniedHandler;
 import com.sap.vcs.server.security.RestAuthenticationEntryPoint;
 import com.sap.vcs.server.security.SecurityConfig;
 import com.sap.vcs.server.security.jwt.JwtAuthenticationFilter;
-import com.sap.vcs.server.security.jwt.JwtService;
 import com.sap.vcs.server.service.DocumentVersionService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
@@ -56,9 +55,6 @@ class DocumentVersionControllerAuthorizationTest {
 
     @MockBean
     private CustomUserDetailsService customUserDetailsService;
-
-    @MockBean
-    private JwtService jwtService;
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;

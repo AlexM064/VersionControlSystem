@@ -43,10 +43,10 @@ class SecurityAuthenticationIntegrationTest {
     private DocumentService documentService;
 
     @MockBean
-    private DocumentVersionService documentVersionService;
+    private JwtService jwtService;
 
     @MockBean
-    private JwtService jwtService;
+    private DocumentVersionService documentVersionService;
 
     @Test
     void validCredentialsAuthenticateSuccessfully() throws Exception {

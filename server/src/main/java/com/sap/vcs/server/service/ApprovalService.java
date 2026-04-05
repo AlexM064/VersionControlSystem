@@ -11,7 +11,6 @@ import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
-import com.sap.vcs.server.repository.UserRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -25,11 +24,12 @@ public class ApprovalService {
     private final AuditLogService auditLogService;
     private final AuthenticatedUserService authenticatedUserService;
 
-    public ApprovalService(ApprovalRepository approvalRepository,
-                           DocumentVersionRepository documentVersionRepository,
-                           UserRepository userRepository,
-                           AuditLogService auditLogService,
-                           AuthenticatedUserService authenticatedUserService) {
+    public ApprovalService(
+            ApprovalRepository approvalRepository,
+            DocumentVersionRepository documentVersionRepository,
+            AuditLogService auditLogService,
+            AuthenticatedUserService authenticatedUserService
+    ) {
         this.approvalRepository = approvalRepository;
         this.documentVersionRepository = documentVersionRepository;
         this.auditLogService = auditLogService;

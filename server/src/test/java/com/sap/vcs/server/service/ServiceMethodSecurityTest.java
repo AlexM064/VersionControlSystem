@@ -4,11 +4,7 @@ import com.sap.vcs.server.dto.DocumentRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
-import com.sap.vcs.server.entity.Approval;
-import com.sap.vcs.server.entity.Document;
-import com.sap.vcs.server.entity.DocumentVersion;
-import com.sap.vcs.server.entity.Role;
-import com.sap.vcs.server.entity.User;
+import com.sap.vcs.server.entity.*;
 import com.sap.vcs.server.entity.enums.ApprovalDecision;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.entity.enums.VersionStatus;
@@ -33,14 +29,8 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @SpringJUnitConfig(ServiceMethodSecurityTest.MethodSecurityTestConfig.class)
 @TestExecutionListeners(
@@ -115,7 +105,6 @@ class ServiceMethodSecurityTest {
             return new DocumentVersionService(
                     documentVersionRepository,
                     documentRepository,
-                    approvalRepository,
                     userRepository,
                     auditLogService
             );
@@ -125,14 +114,12 @@ class ServiceMethodSecurityTest {
         ApprovalService approvalService(
                 ApprovalRepository approvalRepository,
                 DocumentVersionRepository documentVersionRepository,
-                UserRepository userRepository,
                 AuditLogService auditLogService,
                 AuthenticatedUserService authenticatedUserService
         ) {
             return new ApprovalService(
                     approvalRepository,
                     documentVersionRepository,
-                    userRepository,
                     auditLogService,
                     authenticatedUserService
             );
