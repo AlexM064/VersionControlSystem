@@ -183,4 +183,67 @@ class DocumentVersionControllerAuthorizationTest {
                 .andExpect(jsonPath("$.message", containsString("content")))
                 .andExpect(jsonPath("$.path").value("/documents/1/versions"));
     }
+
+    @Test
+    @WithMockUser(roles = "REVIEWER")
+    void createVersion_forbidsReviewerVersion() throws Exception {
+        DocumentVersionRequestDto request = new DocumentVersionRequestDto();
+        request.setContent("Updated content");
+        request.setMessage("Revision");
+
+        mockMvc.perform(post("/api/v1/documents/1/versions")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createVersion_requiresAuthenticationVersion() throws Exception {
+        DocumentVersionRequestDto request = new DocumentVersionRequestDto();
+        request.setContent("Updated content");
+        request.setMessage("Revision");
+
+        mockMvc.perform(post("/api/v1/documents/1/versions")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createVersion_returnsBadRequest_whenContentIsBlankVersion() throws Exception {
+        DocumentVersionRequestDto request = new DocumentVersionRequestDto();
+        request.setContent("   ");
+        request.setMessage("Revision");
+
+        mockMvc.perform(post("/api/v1/documents/1/versions")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createVersion_allowsAuthorVersion() throws Exception {
+        DocumentVersionRequestDto request = new DocumentVersionRequestDto();
+        request.setContent("Updated content");
+        request.setMessage("Revision");
+
+        when(documentVersionService.createVersion(eq(1), any(DocumentVersionRequestDto.class)))
+                .thenReturn(new DocumentVersionResponseDto(
+                        11,
+                        1,
+                        2,
+                        "Updated content",
+                        "Revision",
+                        VersionStatus.DRAFT,
+                        "author.local",
+                        LocalDateTime.now()
+                ));
+
+        mockMvc.perform(post("/api/v1/documents/1/versions")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
 }

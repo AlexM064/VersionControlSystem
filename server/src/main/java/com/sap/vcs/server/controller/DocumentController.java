@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/documents")
+@RequestMapping({"/documents", "/api/v1/documents"})
 @Tag(name = "Documents", description = "Document management endpoints")
 @SecurityRequirement(name = "bearerAuth")
 public class DocumentController {

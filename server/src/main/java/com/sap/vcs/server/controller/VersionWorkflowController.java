@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/versions")
+@RequestMapping({"/versions", "/api/v1/versions/"})
 @Tag(name = "Version Workflow", description = "Version publishing and rollback endpoints")
 @SecurityRequirement(name = "bearerAuth")
 public class VersionWorkflowController {

@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/documents")
+@RequestMapping({"/documents", "/api/v1/documents"})
 @Tag(name = "PDF Export", description = "PDF export endpoints for published and specific document versions")
 @SecurityRequirement(name = "bearerAuth")
 public class DocumentPdfController {

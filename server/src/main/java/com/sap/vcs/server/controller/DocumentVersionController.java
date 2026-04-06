@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/documents/{documentId}/versions")
+@RequestMapping({"/documents/{documentId}/versions", "/api/v1/documents/{documentId}/versions"})
 @Tag(name = "Document Versions", description = "Version creation and review submission endpoints")
 @SecurityRequirement(name = "bearerAuth")
 public class DocumentVersionController {
