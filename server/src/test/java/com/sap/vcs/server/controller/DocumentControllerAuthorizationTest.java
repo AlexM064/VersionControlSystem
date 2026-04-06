@@ -365,4 +365,84 @@ class DocumentControllerAuthorizationTest {
                 .andExpect(jsonPath("$.message").value("Document not found with id: 999"))
                 .andExpect(jsonPath("$.path").value("/documents/999"));
     }
+
+    @Test
+    void shouldReturn401_whenNoAuth_onApiV1Documents() throws Exception {
+        mockMvc.perform(get("/api/v1/documents"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void getDocuments_allowsAuthorVersion() throws Exception {
+        when(documentService.getAllDocuments(eq(null), eq(null), any()))
+                .thenReturn(new PageImpl<>(
+                        List.of(new DocumentResponseDto(
+                                1,
+                                "Spec",
+                                "Description",
+                                "ACTIVE",
+                                null,
+                                "author.local",
+                                LocalDateTime.now(),
+                                LocalDateTime.now()
+                        )),
+                        PageRequest.of(0, 10),
+                        1
+                ));
+
+        mockMvc.perform(get("/api/v1/documents"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "READER")
+    void getDocuments_forbidsReaderVersion() throws Exception {
+        mockMvc.perform(get("/api/v1/documents"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getDocuments_requiresAuthenticationVersion() throws Exception {
+        mockMvc.perform(get("/api/v1/documents"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void createDocument_requiresAuthenticationVersion() throws Exception {
+        DocumentRequestDto request = new DocumentRequestDto();
+        request.setTitle("New document");
+        request.setDescription("Description");
+
+        mockMvc.perform(post("/api/v1/documents")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createDocument_returnsBadRequest_whenTitleIsBlankVersion() throws Exception {
+        DocumentRequestDto request = new DocumentRequestDto();
+        request.setTitle("   ");
+        request.setDescription("Description");
+
+        mockMvc.perform(post("/api/v1/documents")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void createDocument_returnsBadRequest_whenTitleIsTooShortVersion() throws Exception {
+        DocumentRequestDto request = new DocumentRequestDto();
+        request.setTitle("ab");
+        request.setDescription("Description");
+
+        mockMvc.perform(post("/api/v1/documents")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
 }

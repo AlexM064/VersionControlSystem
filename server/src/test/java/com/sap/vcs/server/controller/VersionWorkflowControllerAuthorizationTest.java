@@ -113,4 +113,33 @@ class VersionWorkflowControllerAuthorizationTest {
         mockMvc.perform(post("/versions/1/rollback"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void publish_forbidsAuthorVersion() throws Exception {
+        mockMvc.perform(post("/api/v1/versions/1/publish"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void publish_requiresAuthenticationVersion() throws Exception {
+        mockMvc.perform(post("/api/v1/versions/1/publish"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "REVIEWER")
+    void publish_allowsReviewerVersion() throws Exception {
+        when(documentVersionService.publishVersion(1))
+                .thenReturn(new PublishDocumentResponseDto(
+                        1,
+                        "Spec",
+                        "PUBLISHED",
+                        10,
+                        2
+                ));
+
+        mockMvc.perform(post("/api/v1/versions/1/publish"))
+                .andExpect(status().isOk());
+    }
 }

@@ -117,4 +117,57 @@ class ApprovalControllerAuthorizationTest {
         mockMvc.perform(post("/versions/1/reject"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void reject_requiresAuthenticationVersion() throws Exception {
+        mockMvc.perform(post("/api/v1/versions/1/reject"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "REVIEWER")
+    void approve_allowsReviewerVersion() throws Exception {
+        when(approvalService.approve(1))
+                .thenReturn(new ApprovalResponseDto(
+                        10,
+                        1,
+                        100,
+                        "APPROVED",
+                        null,
+                        LocalDateTime.now()
+                ));
+
+        mockMvc.perform(post("/api/v1/versions/1/approve"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUTHOR")
+    void approve_forbidsAuthorVersion() throws Exception {
+        mockMvc.perform(post("/api/v1/versions/1/approve"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void approve_requiresAuthenticationVersion() throws Exception {
+        mockMvc.perform(post("/api/v1/versions/1/approve"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void reject_allowsAdminVersion() throws Exception {
+        when(approvalService.reject(1))
+                .thenReturn(new ApprovalResponseDto(
+                        11,
+                        1,
+                        100,
+                        "REJECTED",
+                        null,
+                        LocalDateTime.now()
+                ));
+
+        mockMvc.perform(post("/api/v1/versions/1/reject"))
+                .andExpect(status().isOk());
+    }
 }
