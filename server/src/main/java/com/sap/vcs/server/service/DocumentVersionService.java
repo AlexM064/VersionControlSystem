@@ -14,11 +14,7 @@ import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
-import com.sap.vcs.server.repository.UserRepository;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,31 +26,34 @@ public class DocumentVersionService {
 
     private final DocumentVersionRepository versionRepository;
     private final DocumentRepository documentRepository;
-    private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final DocumentVisibilityService documentVisibilityService;
 
     public DocumentVersionService(
             DocumentVersionRepository versionRepository,
             DocumentRepository documentRepository,
-            UserRepository userRepository,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            DocumentVisibilityService documentVisibilityService
     ) {
         this.versionRepository = versionRepository;
         this.documentRepository = documentRepository;
-        this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.documentVisibilityService = documentVisibilityService;
     }
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public DocumentVersionResponseDto createVersion(Integer documentId, DocumentVersionRequestDto request) {
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Document not found with id: " + documentId));
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + documentId));
 
         validateDocumentIsNotArchived(document);
 
-        User currentUser = getCurrentAuthenticatedUser();
-        validateOwnershipOrAdmin(document, currentUser);
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
+        documentVisibilityService.validateOwnershipOrAdmin(
+                document,
+                currentUser,
+                "You do not have permission to create versions for this document"
+        );
 
         Integer nextVersionNumber = versionRepository
                 .findTopByDocumentOrderByVersionNumberDesc(document)
@@ -84,12 +83,14 @@ public class DocumentVersionService {
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     public List<DocumentVersionResponseDto> getVersions(Integer documentId) {
-        Document document = documentRepository.findById(documentId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Document not found with id: " + documentId));
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
 
-        return versionRepository.findByDocumentOrderByVersionNumberAsc(document)
-                .stream()
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + documentId));
+
+        documentVisibilityService.ensureCanViewDocument(currentUser, document);
+
+        return documentVisibilityService.getVisibleVersionsForUser(currentUser, document).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -98,15 +99,14 @@ public class DocumentVersionService {
     @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
     public PublishDocumentResponseDto publishVersion(Integer versionId) {
         DocumentVersion version = versionRepository.findById(versionId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Version not found with id: " + versionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Version not found with id: " + versionId));
 
         validateDocumentIsNotArchived(version.getDocument());
         validatePublishRules(version);
 
         PublishDocumentResponseDto response = applyPublishedVersion(version);
 
-        String username = getCurrentAuthenticatedUser().getUsername();
+        String username = documentVisibilityService.getCurrentAuthenticatedUser().getUsername();
         auditLogService.log(
                 AuditActionType.VERSION_PUBLISHED,
                 "DOCUMENT_VERSION",
@@ -122,15 +122,14 @@ public class DocumentVersionService {
     @PreAuthorize("hasAnyRole('REVIEWER', 'ADMIN')")
     public PublishDocumentResponseDto rollbackVersion(Integer versionId) {
         DocumentVersion version = versionRepository.findById(versionId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Version not found with id: " + versionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Version not found with id: " + versionId));
 
         validateDocumentIsNotArchived(version.getDocument());
         validateRollbackRules(version);
 
         PublishDocumentResponseDto response = applyPublishedVersion(version);
 
-        String username = getCurrentAuthenticatedUser().getUsername();
+        String username = documentVisibilityService.getCurrentAuthenticatedUser().getUsername();
         auditLogService.log(
                 AuditActionType.VERSION_ROLLED_BACK,
                 "DOCUMENT_VERSION",
@@ -146,18 +145,19 @@ public class DocumentVersionService {
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public DocumentVersionResponseDto submitForReview(Integer versionId) {
         DocumentVersion version = versionRepository.findById(versionId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Version not found with id: " + versionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Version not found with id: " + versionId));
 
         validateDocumentIsNotArchived(version.getDocument());
 
-        User currentUser = getCurrentAuthenticatedUser();
-        validateOwnershipOrAdmin(version.getDocument(), currentUser);
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
+        documentVisibilityService.validateOwnershipOrAdmin(
+                version.getDocument(),
+                currentUser,
+                "You do not have permission to create versions for this document"
+        );
 
         if (version.getStatus() != VersionStatus.DRAFT) {
-            throw new BusinessRuleViolationException(
-                    "Only DRAFT versions can be submitted for review"
-            );
+            throw new BusinessRuleViolationException("Only DRAFT versions can be submitted for review");
         }
 
         version.setStatus(VersionStatus.IN_REVIEW);
@@ -178,15 +178,18 @@ public class DocumentVersionService {
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     public CompareVersionsResponseDto compareVersions(Integer leftVersionId, Integer rightVersionId) {
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
+
         DocumentVersion leftVersion = versionRepository.findById(leftVersionId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Version not found with id: " + leftVersionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Version not found with id: " + leftVersionId));
 
         DocumentVersion rightVersion = versionRepository.findById(rightVersionId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Version not found with id: " + rightVersionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Version not found with id: " + rightVersionId));
 
         validateSameDocument(leftVersion, rightVersion);
+
+        documentVisibilityService.ensureCanViewVersion(currentUser, leftVersion);
+        documentVisibilityService.ensureCanViewVersion(currentUser, rightVersion);
 
         boolean identical = Objects.equals(leftVersion.getContent(), rightVersion.getContent());
 
@@ -204,9 +207,7 @@ public class DocumentVersionService {
 
     private void validatePublishRules(DocumentVersion version) {
         if (version.getStatus() != VersionStatus.APPROVED) {
-            throw new BusinessRuleViolationException(
-                    "Only APPROVED versions can be published"
-            );
+            throw new BusinessRuleViolationException("Only APPROVED versions can be published");
         }
     }
 
@@ -271,30 +272,5 @@ public class DocumentVersionService {
                 version.getCreatedBy() != null ? version.getCreatedBy().getUsername() : null,
                 version.getCreatedAt()
         );
-    }
-
-    private User getCurrentAuthenticatedUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
-            throw new IllegalStateException("No authenticated user available in security context");
-        }
-
-        return userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Authenticated user not found with username: " + authentication.getName()
-                ));
-    }
-
-    private void validateOwnershipOrAdmin(Document document, User user) {
-        boolean isAdmin = user.getRoles() != null &&
-                user.getRoles().stream().anyMatch(role -> "ADMIN".equalsIgnoreCase(role.getName()));
-
-        boolean isOwner = document.getOwner() != null &&
-                document.getOwner().getId().equals(user.getId());
-
-        if (!isAdmin && !isOwner) {
-            throw new AccessDeniedException("You do not have permission to create versions for this document");
-        }
     }
 }

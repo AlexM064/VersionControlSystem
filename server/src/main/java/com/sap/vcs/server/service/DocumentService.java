@@ -1,6 +1,10 @@
 package com.sap.vcs.server.service;
 
-import com.sap.vcs.server.dto.*;
+import com.sap.vcs.server.dto.DocumentHistoryResponseDto;
+import com.sap.vcs.server.dto.DocumentRequestDto;
+import com.sap.vcs.server.dto.DocumentResponseDto;
+import com.sap.vcs.server.dto.DocumentVersionResponseDto;
+import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
 import com.sap.vcs.server.entity.User;
@@ -9,16 +13,14 @@ import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.exception.BusinessRuleViolationException;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.DocumentRepository;
-import com.sap.vcs.server.repository.DocumentVersionRepository;
-import com.sap.vcs.server.repository.UserRepository;
 import com.sap.vcs.server.specification.DocumentSpecification;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,23 +29,22 @@ import java.util.List;
 public class DocumentService {
 
     private final DocumentRepository documentRepository;
-    private final DocumentVersionRepository documentVersionRepository;
-    private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final DocumentVisibilityService documentVisibilityService;
 
-    public DocumentService(DocumentRepository documentRepository,
-                           DocumentVersionRepository documentVersionRepository,
-                           UserRepository userRepository,
-                           AuditLogService auditLogService) {
+    public DocumentService(
+            DocumentRepository documentRepository,
+            AuditLogService auditLogService,
+            DocumentVisibilityService documentVisibilityService
+    ) {
         this.documentRepository = documentRepository;
-        this.documentVersionRepository = documentVersionRepository;
-        this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.documentVisibilityService = documentVisibilityService;
     }
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public DocumentResponseDto createDocument(DocumentRequestDto request) {
-        User currentUser = getCurrentAuthenticatedUser();
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
 
         Document document = new Document();
         document.setTitle(request.getTitle());
@@ -69,6 +70,8 @@ public class DocumentService {
             DocumentStatus status,
             Pageable pageable
     ) {
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
+
         Specification<Document> spec = null;
 
         if (title != null && !title.isBlank()) {
@@ -80,15 +83,31 @@ public class DocumentService {
             spec = (spec == null) ? statusSpec : spec.and(statusSpec);
         }
 
-        return documentRepository.findAll(spec, pageable)
-                .map(this::mapToResponse);
+        Sort sort = pageable.getSort().isSorted() ? pageable.getSort() : Sort.by("createdAt");
+
+        List<DocumentResponseDto> visibleDocuments = documentRepository.findAll(spec, sort)
+                .stream()
+                .filter(document -> documentVisibilityService.canViewDocument(currentUser, document))
+                .map(this::mapToResponse)
+                .toList();
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), visibleDocuments.size());
+
+        List<DocumentResponseDto> pageContent =
+                start >= visibleDocuments.size() ? List.of() : visibleDocuments.subList(start, end);
+
+        return new PageImpl<>(pageContent, pageable, visibleDocuments.size());
     }
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     public DocumentResponseDto getDocumentById(Integer id) {
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
+
         Document document = documentRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Document not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + id));
+
+        documentVisibilityService.ensureCanViewDocument(currentUser, document);
 
         return mapToResponse(document);
     }
@@ -96,13 +115,16 @@ public class DocumentService {
     @Transactional
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public void archiveDocument(Integer documentId) {
-        User currentUser = getCurrentAuthenticatedUser();
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
 
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Document not found with id: " + documentId));
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + documentId));
 
-        validateOwnershipOrAdmin(document, currentUser);
+        documentVisibilityService.validateOwnershipOrAdmin(
+                document,
+                currentUser,
+                "You do not have permission to modify this document"
+        );
 
         if (document.getStatus() == DocumentStatus.ARCHIVED) {
             throw new BusinessRuleViolationException("Document is already archived");
@@ -122,16 +144,18 @@ public class DocumentService {
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     public List<DocumentHistoryResponseDto> getDocumentHistory(Integer id) {
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
+
         Document document = documentRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Document not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + id));
+
+        documentVisibilityService.ensureCanViewDocument(currentUser, document);
 
         Integer publishedVersionId = document.getPublishedVersion() != null
                 ? document.getPublishedVersion().getId()
                 : null;
 
-        return documentVersionRepository.findByDocumentOrderByVersionNumberAsc(document)
-                .stream()
+        return documentVisibilityService.getVisibleVersionsForUser(currentUser, document).stream()
                 .map(version -> mapToHistoryResponse(version, publishedVersionId))
                 .toList();
     }
@@ -139,8 +163,7 @@ public class DocumentService {
     @PreAuthorize("hasAnyRole('READER', 'AUTHOR', 'REVIEWER', 'ADMIN')")
     public DocumentVersionResponseDto getPublishedVersion(Integer id) {
         Document document = documentRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Document not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + id));
 
         DocumentVersion publishedVersion = document.getPublishedVersion();
 
@@ -153,12 +176,16 @@ public class DocumentService {
 
     @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     public DocumentResponseDto updateDocument(Integer id, UpdateDocumentMetadataRequestDto request) {
-        User currentUser = getCurrentAuthenticatedUser();
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
 
         Document document = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + id));
 
-        validateOwnershipOrAdmin(document, currentUser);
+        documentVisibilityService.validateOwnershipOrAdmin(
+                document,
+                currentUser,
+                "You do not have permission to modify this document"
+        );
 
         document.setTitle(request.getTitle());
         document.setDescription(request.getDescription());
@@ -176,23 +203,22 @@ public class DocumentService {
         return mapToResponse(updatedDocument);
     }
 
-    private User getCurrentAuthenticatedUser() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found: " + username));
+    public List<DocumentResponseDto> getPublishedDocuments() {
+        return documentRepository.findAll().stream()
+                .filter(doc -> doc.getPublishedVersion() != null)
+                .map(this::mapToResponse)
+                .toList();
     }
 
-    private void validateOwnershipOrAdmin(Document document, User user) {
-        boolean isAdmin = user.getRoles() != null &&
-                user.getRoles().stream().anyMatch(role -> "ADMIN".equalsIgnoreCase(role.getName()));
+    public DocumentResponseDto getPublishedOnly(Integer id) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + id));
 
-        boolean isOwner = document.getOwner() != null &&
-                document.getOwner().getId().equals(user.getId());
-
-        if (!isAdmin && !isOwner) {
-            throw new AccessDeniedException("You do not have permission to modify this document");
+        if (doc.getPublishedVersion() == null) {
+            throw new ResourceNotFoundException("No published version available for document id: " + id);
         }
+
+        return mapToResponse(doc);
     }
 
     private DocumentHistoryResponseDto mapToHistoryResponse(DocumentVersion version, Integer publishedVersionId) {
@@ -229,22 +255,5 @@ public class DocumentService {
                 document.getCreatedAt(),
                 document.getUpdatedAt()
         );
-    }
-    public List<DocumentResponseDto> getPublishedDocuments() {
-        return documentRepository.findAll().stream()
-                .filter(doc -> doc.getPublishedVersion() != null)
-                .map(this::mapToResponse)
-                .toList();
-    }
-
-    public DocumentResponseDto getPublishedOnly(Integer id) {
-        Document doc = documentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
-
-        if (doc.getPublishedVersion() == null) {
-            throw new RuntimeException("No published version available");
-        }
-
-        return mapToResponse(doc);
     }
 }
