@@ -79,7 +79,10 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/documents/published")
+                        .hasAnyRole("READER", "AUTHOR", "REVIEWER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/documents/*/published-only")
+                        .hasAnyRole("READER", "AUTHOR", "REVIEWER", "ADMIN")
                         // =========================
                         // AUTHENTICATED PROFILE
                         // =========================

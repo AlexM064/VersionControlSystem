@@ -96,4 +96,12 @@ public class DocumentController {
     public ResponseEntity<DocumentVersionResponseDto> getPublishedVersion(@PathVariable Integer id) {
         return ResponseEntity.ok(documentService.getPublishedVersion(id));
     }
+    @GetMapping("/published")
+    public ResponseEntity<List<DocumentResponseDto>> getPublishedDocuments() {
+        return ResponseEntity.ok(documentService.getPublishedDocuments());
+    }
+    @GetMapping("/{id}/published-only")
+    public ResponseEntity<DocumentResponseDto> getPublishedOnly(@PathVariable Integer id) {
+        return ResponseEntity.ok(documentService.getPublishedOnly(id));
+    }
 }

@@ -230,4 +230,21 @@ public class DocumentService {
                 document.getUpdatedAt()
         );
     }
+    public List<DocumentResponseDto> getPublishedDocuments() {
+        return documentRepository.findAll().stream()
+                .filter(doc -> doc.getPublishedVersion() != null)
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public DocumentResponseDto getPublishedOnly(Integer id) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+
+        if (doc.getPublishedVersion() == null) {
+            throw new RuntimeException("No published version available");
+        }
+
+        return mapToResponse(doc);
+    }
 }
