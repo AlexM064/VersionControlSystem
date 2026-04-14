@@ -6,13 +6,10 @@ import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.exception.ResourceNotFoundException;
 import com.sap.vcs.server.repository.DocumentRepository;
-import com.sap.vcs.server.repository.DocumentVersionRepository;
-import com.sap.vcs.server.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,6 +20,8 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,15 +31,11 @@ class DocumentServiceTest {
     private DocumentRepository documentRepository;
 
     @Mock
-    private DocumentVersionRepository documentVersionRepository;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
     private AuditLogService auditLogService;
 
-    @InjectMocks
+    @Mock
+    private DocumentVisibilityService documentVisibilityService;
+
     private DocumentService documentService;
 
     private AutoCloseable closeable;
@@ -49,6 +44,12 @@ class DocumentServiceTest {
     void setUp() {
         closeable = MockitoAnnotations.openMocks(this);
         SecurityContextHolder.clearContext();
+
+        documentService = new DocumentService(
+                documentRepository,
+                auditLogService,
+                documentVisibilityService
+        );
     }
 
     @AfterEach
@@ -68,10 +69,12 @@ class DocumentServiceTest {
         document.setStatus(DocumentStatus.ACTIVE);
         document.setOwner(author);
 
-        when(userRepository.findByUsername("author.local"))
-                .thenReturn(Optional.of(author));
+        when(documentVisibilityService.getCurrentAuthenticatedUser())
+                .thenReturn(author);
         when(documentRepository.findById(1))
                 .thenReturn(Optional.of(document));
+        doNothing().when(documentVisibilityService)
+                .validateOwnershipOrAdmin(document, author, "You do not have permission to modify this document");
         when(documentRepository.save(document))
                 .thenReturn(document);
 
@@ -89,8 +92,8 @@ class DocumentServiceTest {
         User author = createUser(1, "author.local", "AUTHOR");
         setAuthenticatedUser("author.local");
 
-        when(userRepository.findByUsername("author.local"))
-                .thenReturn(Optional.of(author));
+        when(documentVisibilityService.getCurrentAuthenticatedUser())
+                .thenReturn(author);
         when(documentRepository.findById(999))
                 .thenReturn(Optional.empty());
 

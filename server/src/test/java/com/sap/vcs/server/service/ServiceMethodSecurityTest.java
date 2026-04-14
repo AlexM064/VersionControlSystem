@@ -4,7 +4,11 @@ import com.sap.vcs.server.dto.DocumentRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionRequestDto;
 import com.sap.vcs.server.dto.DocumentVersionResponseDto;
 import com.sap.vcs.server.dto.UpdateDocumentMetadataRequestDto;
-import com.sap.vcs.server.entity.*;
+import com.sap.vcs.server.entity.Approval;
+import com.sap.vcs.server.entity.Document;
+import com.sap.vcs.server.entity.DocumentVersion;
+import com.sap.vcs.server.entity.Role;
+import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.entity.enums.ApprovalDecision;
 import com.sap.vcs.server.entity.enums.DocumentStatus;
 import com.sap.vcs.server.entity.enums.VersionStatus;
@@ -29,8 +33,14 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @SpringJUnitConfig(ServiceMethodSecurityTest.MethodSecurityTestConfig.class)
 @TestExecutionListeners(
@@ -80,17 +90,23 @@ class ServiceMethodSecurityTest {
         }
 
         @Bean
+        DocumentVisibilityService documentVisibilityService(
+                UserRepository userRepository,
+                DocumentVersionRepository documentVersionRepository
+        ) {
+            return new DocumentVisibilityService(userRepository, documentVersionRepository);
+        }
+
+        @Bean
         DocumentService documentService(
                 DocumentRepository documentRepository,
-                DocumentVersionRepository documentVersionRepository,
-                UserRepository userRepository,
-                AuditLogService auditLogService
+                AuditLogService auditLogService,
+                DocumentVisibilityService documentVisibilityService
         ) {
             return new DocumentService(
                     documentRepository,
-                    documentVersionRepository,
-                    userRepository,
-                    auditLogService
+                    auditLogService,
+                    documentVisibilityService
             );
         }
 
@@ -98,15 +114,14 @@ class ServiceMethodSecurityTest {
         DocumentVersionService documentVersionService(
                 DocumentVersionRepository documentVersionRepository,
                 DocumentRepository documentRepository,
-                ApprovalRepository approvalRepository,
-                UserRepository userRepository,
-                AuditLogService auditLogService
+                AuditLogService auditLogService,
+                DocumentVisibilityService documentVisibilityService
         ) {
             return new DocumentVersionService(
                     documentVersionRepository,
                     documentRepository,
-                    userRepository,
-                    auditLogService
+                    auditLogService,
+                    documentVisibilityService
             );
         }
 

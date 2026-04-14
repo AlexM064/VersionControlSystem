@@ -2,6 +2,7 @@ package com.sap.vcs.server.repository;
 
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
+import com.sap.vcs.server.entity.enums.VersionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,4 +13,6 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
     List<DocumentVersion> findByDocumentOrderByVersionNumberAsc(Document document);
 
     Optional<DocumentVersion> findTopByDocumentOrderByVersionNumberDesc(Document document);
+
+    boolean existsByDocumentAndStatus(Document document, VersionStatus status);
 }

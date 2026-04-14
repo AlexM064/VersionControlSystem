@@ -3,20 +3,23 @@ package com.sap.vcs.server.service;
 import com.sap.vcs.server.dto.CompareVersionsResponseDto;
 import com.sap.vcs.server.entity.Document;
 import com.sap.vcs.server.entity.DocumentVersion;
+import com.sap.vcs.server.entity.Role;
+import com.sap.vcs.server.entity.User;
 import com.sap.vcs.server.exception.BusinessRuleViolationException;
-import com.sap.vcs.server.repository.ApprovalRepository;
 import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
-import com.sap.vcs.server.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,16 +32,26 @@ class DocumentVersionServiceTest {
     private DocumentRepository documentRepository;
 
     @Mock
-    private ApprovalRepository approvalRepository;
+    private AuditLogService auditLogService;
 
     @Mock
-    private UserRepository userRepository;
+    private DocumentVisibilityService documentVisibilityService;
 
-    @InjectMocks
-    private DocumentVersionService documentVersionService;
+    private DocumentVersionService createService() {
+        return new DocumentVersionService(
+                documentVersionRepository,
+                documentRepository,
+                auditLogService,
+                documentVisibilityService
+        );
+    }
 
     @Test
     void compareVersions_returnsExpectedPayloadForSameDocument() {
+        DocumentVersionService documentVersionService = createService();
+
+        User reviewer = createUser(1, "reviewer.local", "REVIEWER");
+
         Document document = new Document();
         document.setId(1);
 
@@ -54,8 +67,12 @@ class DocumentVersionServiceTest {
         rightVersion.setVersionNumber(2);
         rightVersion.setContent("Second content");
 
+        when(documentVisibilityService.getCurrentAuthenticatedUser())
+                .thenReturn(reviewer);
         when(documentVersionRepository.findById(10)).thenReturn(Optional.of(leftVersion));
         when(documentVersionRepository.findById(11)).thenReturn(Optional.of(rightVersion));
+        doNothing().when(documentVisibilityService).ensureCanViewVersion(reviewer, leftVersion);
+        doNothing().when(documentVisibilityService).ensureCanViewVersion(reviewer, rightVersion);
 
         CompareVersionsResponseDto response = documentVersionService.compareVersions(10, 11);
 
@@ -71,6 +88,8 @@ class DocumentVersionServiceTest {
 
     @Test
     void compareVersions_throwsWhenVersionsBelongToDifferentDocuments() {
+        DocumentVersionService documentVersionService = createService();
+
         Document leftDocument = new Document();
         leftDocument.setId(1);
 
@@ -92,5 +111,17 @@ class DocumentVersionServiceTest {
                 BusinessRuleViolationException.class,
                 () -> documentVersionService.compareVersions(10, 11)
         );
+    }
+
+    private User createUser(Integer id, String username, String roleName) {
+        Role role = new Role();
+        role.setId(id);
+        role.setName(roleName);
+
+        User user = new User();
+        user.setId(id);
+        user.setUsername(username);
+        user.setRoles(Set.of(role));
+        return user;
     }
 }
