@@ -8,6 +8,10 @@ import com.sap.vcs.server.repository.DocumentRepository;
 import com.sap.vcs.server.repository.DocumentVersionRepository;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.io.UncheckedIOException;
+import org.springframework.core.io.ClassPathResource;
+
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
 
@@ -57,18 +61,42 @@ public class PdfExportService {
         return renderDocumentVersionPdf(document, version, false);
     }
 
+    private File copyClasspathFontToTempFile(String classpathLocation, String prefix, String suffix) {
+    try {
+        ClassPathResource resource = new ClassPathResource(classpathLocation);
+        File tempFile = File.createTempFile(prefix, suffix);
+        tempFile.deleteOnExit();
+
+        try (java.io.InputStream in = resource.getInputStream();
+             java.io.OutputStream out = new java.io.FileOutputStream(tempFile)) {
+            in.transferTo(out);
+        }
+
+        return tempFile;
+    } catch (java.io.IOException ex) {
+        throw new UncheckedIOException("Could not load font from " + classpathLocation, ex);
+    }
+}
+
     private byte[] renderDocumentVersionPdf(Document document, DocumentVersion version, boolean published) {
         String html = buildHtml(document, version, published);
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.useFastMode();
+            File regularFont = copyClasspathFontToTempFile("fonts/DejaVuSans.ttf", "dejavu-regular", ".ttf");
+            File boldFont = copyClasspathFontToTempFile("fonts/DejaVuSans-Bold.ttf", "dejavu-bold", ".ttf");
+            builder.useFont(regularFont, "DejaVu Sans", 400, PdfRendererBuilder.FontStyle.NORMAL, false);
+            builder.useFont(boldFont, "DejaVu Sans", 700, PdfRendererBuilder.FontStyle.NORMAL, false);
+
             builder.withHtmlContent(html, null);
             builder.toStream(outputStream);
             builder.run();
+
             return outputStream.toByteArray();
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to generate PDF", e);
+            throw new IllegalStateException(
+                "Failed to generate PDF: " + e.getClass().getSimpleName() + " - " + e.getMessage(), e);
         }
     }
 
@@ -108,7 +136,7 @@ public class PdfExportService {
                         }
 
                         body {
-                            font-family: Arial, sans-serif;
+                            font-family: 'DejaVu Sans', Arial, sans-serif;
                             font-size: 12px;
                             color: #222222;
                             margin: 0;
@@ -148,7 +176,7 @@ public class PdfExportService {
                         }
 
                         .meta {
-                            width: 100%;
+                            width: 100%%;
                             border-collapse: collapse;
                             margin-bottom: 24px;
                         }
