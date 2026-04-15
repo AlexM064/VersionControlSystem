@@ -40,7 +40,7 @@ export const useDocumentVersions = (documentId: number, page = 1, pageSize = 10,
   });
 };
 
-export const usePublishedVersion = (documentId: number) => {
+export const usePublishedVersion = (documentId: number, enabled = true) => {
   return useQuery<DocumentVersion | null>({
     queryKey: ['publishedVersion', documentId],
     queryFn: async () => {
@@ -52,7 +52,7 @@ export const usePublishedVersion = (documentId: number) => {
     },
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
-    enabled: documentId > 0,
+    enabled: documentId > 0 && enabled,
   });
 };
 
