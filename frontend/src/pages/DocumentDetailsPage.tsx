@@ -74,7 +74,7 @@ export const DocumentDetailsPage = () => {
   const {
     data: publishedVersion,
     isLoading: isLoadingPublished,
-  } = usePublishedVersion(documentId);
+  } = usePublishedVersion(documentId, document?.publishedVersionId != null);
 
   const requestedVersionId = Number(searchParams.get('versionId') || 0);
   const versions = versionsData?.content || [];

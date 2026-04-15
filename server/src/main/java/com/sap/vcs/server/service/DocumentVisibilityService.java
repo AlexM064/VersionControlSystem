@@ -54,7 +54,7 @@ public class DocumentVisibilityService {
             return true;
         }
 
-        return isReviewer(user) && hasInReviewVersion(document);
+        return isReviewer(user) && hasReviewerWorkflowVisibleVersion(document);
     }
 
     public void ensureCanViewDocument(User user, Document document) {
@@ -78,7 +78,7 @@ public class DocumentVisibilityService {
             return true;
         }
 
-        if (isReviewer(user) && hasInReviewVersion(document)) {
+        if (isReviewer(user) && hasReviewerWorkflowVisibleVersion(document)) {
             return true;
         }
 
@@ -103,7 +103,7 @@ public class DocumentVisibilityService {
             return allVersions;
         }
 
-        if (isReviewer(user) && hasInReviewVersion(document)) {
+        if (isReviewer(user) && hasReviewerWorkflowVisibleVersion(document)) {
             return allVersions;
         }
 
@@ -124,8 +124,11 @@ public class DocumentVisibilityService {
         }
     }
 
-    public boolean hasInReviewVersion(Document document) {
-        return documentVersionRepository.existsByDocumentAndStatus(document, VersionStatus.IN_REVIEW);
+    public boolean hasReviewerWorkflowVisibleVersion(Document document) {
+        return documentVersionRepository.existsByDocumentAndStatusIn(
+                document,
+                List.of(VersionStatus.IN_REVIEW, VersionStatus.APPROVED)
+        );
     }
 
     public boolean isOwner(Document document, User user) {
