@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: 2664ff;
+  --color-secondary: 5a67d8;
+  --color-success: 48bb78;
+  --color-warning: ed8936;
+  --color-error: f56565;
+  --color-info: 4299e1;
+}
+
+* {
+  @apply box-border;
+}
+
+html,
+body {
+  @apply h-full w-full;
+}
+
+body {
+  @apply bg-gray-100 text-gray-900 dark:bg-slate-950 dark:text-slate-100;
+}
+
+#root {
+  @apply h-full w-full;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  @apply w-2 h-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-slate-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 dark:bg-slate-600 rounded hover:bg-gray-600 dark:hover:bg-slate-500;
+}
+
+@layer base {
+  .dark .bg-white {
+    @apply bg-slate-900;
+  }
+
+  .dark .bg-gray-50 {
+    @apply bg-slate-800;
+  }
+
+  .dark .bg-gray-100 {
+    @apply bg-slate-950;
+  }
+
+  .dark .border-gray-200 {
+    @apply border-slate-700;
+  }
+
+  .dark .border-gray-300 {
+    @apply border-slate-600;
+  }
+
+  .dark .text-gray-900 {
+    @apply text-slate-100;
+  }
+
+  .dark .text-gray-700 {
+    @apply text-slate-300;
+  }
+
+  .dark .text-gray-600 {
+    @apply text-slate-400;
+  }
+
+  .dark .text-gray-500 {
+    @apply text-slate-400;
+  }
+
+  .dark .hover\:bg-gray-100:hover {
+    @apply bg-slate-800;
+  }
+
+  .dark .hover\:bg-gray-50:hover {
+    @apply bg-slate-800;
+  }
+
+  .dark input,
+  .dark textarea,
+  .dark select {
+    @apply bg-slate-900 border-slate-600 text-slate-100 placeholder:text-slate-400;
+  }
+
+  .dark table thead {
+    @apply bg-slate-800;
+  }
+}

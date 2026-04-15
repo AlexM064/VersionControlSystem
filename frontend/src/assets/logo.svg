@@ -1,0 +1,19 @@
+<svg width="420" height="120" viewBox="0 0 420 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shieldStroke" x1="22" y1="12" x2="88" y2="102" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6CD4FF"/>
+      <stop offset="1" stop-color="#2F6BFF"/>
+    </linearGradient>
+    <linearGradient id="shieldFill" x1="20" y1="14" x2="92" y2="98" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M56 8C46.5 15 34.5 20 20 22V62C20 83 34.5 99 56 108C77.5 99 92 83 92 62V22C77.5 20 65.5 15 56 8Z" fill="url(#shieldFill)"/>
+  <path d="M56 16C47.8 21.7 37.8 25.8 26 27.5V61.5C26 78 37.6 91.1 56 98.8C74.4 91.1 86 78 86 61.5V27.5C74.2 25.8 64.2 21.7 56 16Z" fill="none" stroke="rgba(255,255,255,0.88)" stroke-width="4"/>
+  <path d="M40 50L54 63L75 42" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 70L54 88L78 67" fill="none" stroke="rgba(255,255,255,0.84)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="112" y="72" fill="#1E293B" font-family="Segoe UI, Arial, sans-serif" font-size="66" font-weight="800" letter-spacing="0.5">DVCS</text>
+</svg>
