@@ -1,9 +1,11 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { API_BASE_URL, API_TIMEOUT, STORAGE_KEYS } from '@/utils/constants';
+import { getApiErrorMessage } from './error';
 
 export const createApiClient = (): AxiosInstance => {
   const client = axios.create({
-    baseURL: 'http://localhost:8080',
-    timeout: 60000, // 60 seconds
+    baseURL: API_BASE_URL,
+    timeout: API_TIMEOUT,
     headers: {
       'Content-Type': 'application/json',
     },
@@ -24,13 +26,19 @@ export const createApiClient = (): AxiosInstance => {
   client.interceptors.response.use(
     (response) => response,
     (error: AxiosError) => {
-      if (error.response?.status === 401) {
+      const requestUrl = error.config?.url || '';
+      const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+      if (error.response?.status === 401 && !isAuthRequest) {
         // Clear auth data from localStorage
-        localStorage.removeItem('dvcs_token');
-        localStorage.removeItem('dvcs_user');
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.USER);
         // Redirect to login
         window.location.href = '/login';
       }
+
+      error.message = getApiErrorMessage(error);
+
       return Promise.reject(error);
     }
   );

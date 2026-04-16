@@ -26,6 +26,14 @@ export const useArchiveDocument = () => {
   });
 };
 
+export const useDeleteDocument = () => {
+  return useMutation({
+    mutationFn: async (documentId: number) => {
+      await documentsApi.deleteDocument(documentId);
+    },
+  });
+};
+
 export const useGetDocument = (documentId: number) => {
   return useQuery<Document>({
     queryKey: ['document', documentId],

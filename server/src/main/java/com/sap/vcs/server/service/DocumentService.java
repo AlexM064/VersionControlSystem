@@ -50,6 +50,7 @@ public class DocumentService {
         document.setTitle(request.getTitle());
         document.setDescription(request.getDescription());
         document.setOwner(currentUser);
+        document.setStatus(DocumentStatus.DRAFT);
 
         Document savedDocument = documentRepository.save(document);
 
@@ -139,6 +140,34 @@ public class DocumentService {
                 document.getId(),
                 currentUser.getUsername(),
                 "Document archived"
+        );
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deleteDocument(Integer documentId) {
+        User currentUser = documentVisibilityService.getCurrentAuthenticatedUser();
+
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + documentId));
+
+        Integer deletedDocumentId = document.getId();
+        String deletedDocumentTitle = document.getTitle();
+
+        // Break direct FK before cascading version removal.
+        if (document.getPublishedVersion() != null) {
+            document.setPublishedVersion(null);
+            documentRepository.saveAndFlush(document);
+        }
+
+        documentRepository.delete(document);
+
+        auditLogService.log(
+                AuditActionType.DOCUMENT_DELETED,
+                "DOCUMENT",
+                deletedDocumentId,
+                currentUser.getUsername(),
+                "Document permanently deleted with title: " + deletedDocumentTitle
         );
     }
 
@@ -245,15 +274,24 @@ public class DocumentService {
     }
 
     private DocumentResponseDto mapToResponse(Document document) {
-        return new DocumentResponseDto(
-                document.getId(),
-                document.getTitle(),
-                document.getDescription(),
-                document.getStatus().name(),
-                document.getPublishedVersion() != null ? document.getPublishedVersion().getId() : null,
-                document.getOwner() != null ? document.getOwner().getUsername() : null,
-                document.getCreatedAt(),
-                document.getUpdatedAt()
-        );
+        DocumentResponseDto dto = new DocumentResponseDto();
+
+        dto.setId(document.getId());
+        dto.setTitle(document.getTitle());
+        dto.setDescription(document.getDescription());
+        dto.setStatus(document.getStatus().name());
+
+        if (document.getOwner() != null) {
+            dto.setOwnerUsername(document.getOwner().getUsername());
+        }
+
+        if (document.getPublishedVersion() != null) {
+            dto.setPublishedVersionId(document.getPublishedVersion().getId());
+        }
+
+        dto.setCreatedAt(document.getCreatedAt());
+        dto.setUpdatedAt(document.getUpdatedAt());
+
+        return dto;
     }
 }

@@ -3,13 +3,16 @@ import { useEffect } from 'react';
 import { useCreateVersion } from '@/hooks/useVersionMutations';
 import { usePermission } from '@/hooks';
 import { useGetDocument } from '@/hooks/useDocumentMutations';
+import { useAuth } from '@/contexts/AuthContext';
 import { Alert } from '@/components/ui';
 import { VersionForm } from '@/components/forms/VersionForm';
+import { UserRole } from '@/types/auth';
 
 export const CreateVersionPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { can } = usePermission();
+  const { user } = useAuth();
   const documentId = parseInt(id || '0', 10);
 
   const { data: document, isLoading: isLoadingDocument, error: loadError } = useGetDocument(documentId);
@@ -67,6 +70,24 @@ export const CreateVersionPage = () => {
           type="error"
           title="Document not found"
           message="The document you're trying to create a version for does not exist"
+          dismissible={false}
+        />
+      </div>
+    );
+  }
+
+  const isAuthor = user?.roles.includes(UserRole.AUTHOR);
+  const isAdmin = user?.roles.includes(UserRole.ADMIN);
+  const isAuthorViewingForeignDocument =
+    !!isAuthor && !isAdmin && !!user?.username && user.username !== document.ownerUsername;
+
+  if (isAuthorViewingForeignDocument) {
+    return (
+      <div className="space-y-4">
+        <Alert
+          type="warning"
+          title="Create Version Unavailable"
+          message="Authors can create versions only for their own documents"
           dismissible={false}
         />
       </div>

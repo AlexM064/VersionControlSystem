@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Eye, Archive, FileSearch } from 'lucide-react';
+import { Plus, Edit, Eye, Archive, FileSearch, Trash2 } from 'lucide-react';
 import { useDocuments } from '@/hooks/useDocuments';
-import { useArchiveDocument } from '@/hooks/useDocumentMutations';
+import { useArchiveDocument, useDeleteDocument } from '@/hooks/useDocumentMutations';
 import { usePermission } from '@/hooks/usePermission';
 import { useAuth } from '@/contexts/AuthContext';
 import { DocumentFilterBar } from '@/components/filters/DocumentFilterBar';
@@ -11,6 +11,7 @@ import { Document, DocumentStatus } from '@/types/document';
 import { UserRole } from '@/types/auth';
 import { formatDate } from '@/utils/helpers';
 import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/api';
 
 const PAGE_SIZE = 10;
 
@@ -28,6 +29,7 @@ export const DocumentsPage = () => {
   const [titleFilter, setTitleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | ''>('');
   const [archiveConfirmId, setArchiveConfirmId] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const {
     data: documentsData,
@@ -44,6 +46,7 @@ export const DocumentsPage = () => {
   });
 
   const archiveMutation = useArchiveDocument();
+  const deleteMutation = useDeleteDocument();
 
   useEffect(() => {
     if (!isError) return;
@@ -80,6 +83,10 @@ export const DocumentsPage = () => {
     setArchiveConfirmId(documentId);
   };
 
+  const handleDeleteDocument = (documentId: number) => {
+    setDeleteConfirmId(documentId);
+  };
+
   const confirmArchiveDocument = async () => {
     if (!archiveConfirmId) return;
 
@@ -88,14 +95,32 @@ export const DocumentsPage = () => {
       toast.success('Document archived successfully.');
       setArchiveConfirmId(null);
       refetch(); // Refresh the list
-    } catch (archiveError: any) {
-      const message = archiveError?.response?.data?.message || archiveError?.message || 'Failed to archive document';
+    } catch (archiveError: unknown) {
+      const message = getApiErrorMessage(archiveError, 'Failed to archive document');
       toast.error(message, 'Archive failed');
     }
   };
 
   const cancelArchiveDocument = () => {
     setArchiveConfirmId(null);
+  };
+
+  const confirmDeleteDocument = async () => {
+    if (!deleteConfirmId) return;
+
+    try {
+      await deleteMutation.mutateAsync(deleteConfirmId);
+      toast.success('Document permanently deleted.');
+      setDeleteConfirmId(null);
+      refetch();
+    } catch (deleteError: unknown) {
+      const message = getApiErrorMessage(deleteError, 'Failed to permanently delete document');
+      toast.error(message, 'Delete failed');
+    }
+  };
+
+  const cancelDeleteDocument = () => {
+    setDeleteConfirmId(null);
   };
 
   const totalPages = documentsData?.totalPages || 1;
@@ -227,7 +252,7 @@ export const DocumentsPage = () => {
                           onClick={() => handleViewDetails(doc.id)}
                           className="p-1.5 text-slate-600 hover:bg-blue-100 hover:text-blue-700 dark:text-slate-400 dark:hover:bg-blue-900/40 dark:hover:text-blue-300 rounded transition-colors duration-150"
                           title="View details"
-                          disabled={archiveMutation.isPending}
+                          disabled={archiveMutation.isPending || deleteMutation.isPending}
                         >
                           <Eye size={16} />
                         </button>
@@ -237,7 +262,7 @@ export const DocumentsPage = () => {
                             onClick={() => handleEditDocument(doc.id)}
                             className="p-1.5 text-slate-600 hover:bg-blue-100 hover:text-blue-700 dark:text-slate-400 dark:hover:bg-blue-900/40 dark:hover:text-blue-300 rounded transition-colors duration-150"
                             title="Edit document"
-                            disabled={archiveMutation.isPending}
+                            disabled={archiveMutation.isPending || deleteMutation.isPending}
                           >
                             <Edit size={16} />
                           </button>
@@ -248,9 +273,20 @@ export const DocumentsPage = () => {
                             onClick={() => handleArchiveDocument(doc.id)}
                             className="p-1.5 text-slate-600 hover:bg-red-100 hover:text-red-700 dark:text-slate-400 dark:hover:bg-red-900/40 dark:hover:text-red-300 rounded transition-colors duration-150"
                             title="Archive document"
-                            disabled={archiveMutation.isPending}
+                            disabled={archiveMutation.isPending || deleteMutation.isPending}
                           >
                             <Archive size={16} />
+                          </button>
+                        )}
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            className="p-1.5 text-slate-600 hover:bg-red-100 hover:text-red-700 dark:text-slate-400 dark:hover:bg-red-900/40 dark:hover:text-red-300 rounded transition-colors duration-150"
+                            title="Permanently delete document"
+                            disabled={archiveMutation.isPending || deleteMutation.isPending}
+                          >
+                            <Trash2 size={16} />
                           </button>
                         )}
                       </div>
@@ -275,6 +311,26 @@ export const DocumentsPage = () => {
                     </Button>
                     <Button variant="danger" size="sm" onClick={confirmArchiveDocument} loading={archiveMutation.isPending}>
                       Archive
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmId && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="mx-4 w-full max-w-md rounded-lg bg-white dark:bg-slate-900 p-6 shadow-xl dark:shadow-2xl dark:shadow-black/30">
+                  <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">Delete Document Permanently</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                    Are you sure you want to permanently delete this document? This action cannot be undone.
+                  </p>
+                  <div className="mt-6 flex justify-end gap-3">
+                    <Button variant="secondary" size="sm" onClick={cancelDeleteDocument} disabled={deleteMutation.isPending}>
+                      Cancel
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={confirmDeleteDocument} loading={deleteMutation.isPending}>
+                      Delete Permanently
                     </Button>
                   </div>
                 </div>

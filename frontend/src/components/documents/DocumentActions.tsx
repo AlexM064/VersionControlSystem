@@ -26,6 +26,9 @@ interface DocumentActionsProps {
   onCompareVersions?: () => void;
   isDownloadingPDF?: boolean;
   loadingAction?: 'submit' | 'approve' | 'reject' | 'publish' | 'rollback' | 'create';
+  isActionInFlight?: boolean;
+  isCreateVersionDisabled?: boolean;
+  createVersionDisabledReason?: string;
 }
 
 export const DocumentActions = ({
@@ -51,11 +54,14 @@ export const DocumentActions = ({
   onCompareVersions,
   isDownloadingPDF = false,
   loadingAction,
+  isActionInFlight = false,
+  isCreateVersionDisabled = false,
+  createVersionDisabledReason,
 }: DocumentActionsProps) => {
   const isDraft = selectedVersion?.status === VersionStatus.DRAFT;
-  const isInReview = selectedVersion?.status === VersionStatus.IN_REVIEW;
   const isApproved = selectedVersion?.status === VersionStatus.APPROVED;
   const isPublished = selectedVersion?.status === VersionStatus.PUBLISHED;
+  const canReviewCurrentVersion = selectedVersion?.status === VersionStatus.IN_REVIEW;
   const hasWorkflowActions =
     !!permissions.canCreateVersion ||
     !!permissions.canSubmitReview ||
@@ -76,7 +82,9 @@ export const DocumentActions = ({
             size="md"
             onClick={onCreateVersion}
             loading={loadingAction === 'create'}
+            disabled={isActionInFlight || isCreateVersionDisabled}
             className="flex items-center justify-center gap-2"
+            title={isCreateVersionDisabled ? createVersionDisabledReason : undefined}
           >
             <Plus size={18} />
             Create Version
@@ -90,6 +98,7 @@ export const DocumentActions = ({
             size="md"
             onClick={() => onSubmitReview?.(selectedVersion.id)}
             loading={loadingAction === 'submit'}
+            disabled={isActionInFlight}
             className="flex items-center justify-center gap-2"
           >
             <Send size={18} />
@@ -97,26 +106,30 @@ export const DocumentActions = ({
           </Button>
         )}
 
-        {isInReview && permissions.canApprove && selectedVersion && (
+        {permissions.canApprove && selectedVersion && (
           <Button
             variant="primary"
             size="md"
             onClick={() => onApprove?.(selectedVersion.id)}
             loading={loadingAction === 'approve'}
+            disabled={!canReviewCurrentVersion || isActionInFlight}
             className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700"
+            title={!canReviewCurrentVersion ? 'Only IN_REVIEW versions can be approved' : undefined}
           >
             <CheckCircle size={18} />
             Approve
           </Button>
         )}
 
-        {isInReview && permissions.canReject && selectedVersion && (
+        {permissions.canReject && selectedVersion && (
           <Button
             variant="danger"
             size="md"
             onClick={() => onReject?.(selectedVersion.id)}
             loading={loadingAction === 'reject'}
+            disabled={!canReviewCurrentVersion || isActionInFlight}
             className="flex items-center justify-center gap-2"
+            title={!canReviewCurrentVersion ? 'Only IN_REVIEW versions can be rejected' : undefined}
           >
             <XCircle size={18} />
             Reject
@@ -129,6 +142,7 @@ export const DocumentActions = ({
             size="md"
             onClick={() => onPublish?.(selectedVersion.id)}
             loading={loadingAction === 'publish'}
+            disabled={isActionInFlight}
             className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700"
           >
             <BookMarked size={18} />
@@ -142,6 +156,7 @@ export const DocumentActions = ({
             size="md"
             onClick={() => onRollback?.(selectedVersion.id)}
             loading={loadingAction === 'rollback'}
+            disabled={isActionInFlight}
             className="flex items-center justify-center gap-2"
           >
             <RotateCcw size={18} />

@@ -56,6 +56,14 @@ public class DocumentController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Permanently delete a document")
+    public ResponseEntity<Void> deleteDocument(@PathVariable Integer id) {
+        documentService.deleteDocument(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/compare")
     @PreAuthorize("hasAnyRole('AUTHOR', 'REVIEWER', 'ADMIN')")
     @Operation(summary = "Compare two document versions")

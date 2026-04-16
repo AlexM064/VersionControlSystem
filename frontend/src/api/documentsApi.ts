@@ -71,6 +71,11 @@ export const documentsApi = {
     await apiClient.patch(`/documents/${id}/archive`, {});
   },
 
+  deleteDocument: async (id: number): Promise<void> => {
+    // Backend returns 204 No Content for hard delete
+    await apiClient.delete(`/documents/${id}`);
+  },
+
   getHistory: async (id: number) => {
     // Backend returns List<DocumentHistoryResponseDto>, convert to pagination format
     const response = await apiClient.get(`/documents/${id}/history`);

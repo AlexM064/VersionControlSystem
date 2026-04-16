@@ -5,6 +5,7 @@ import { Eye, Copy, FileDown, Files } from 'lucide-react';
 
 interface VersionsTableProps {
   versions: DocumentVersion[];
+  selectedVersionId?: number;
   isLoading?: boolean;
   currentPage?: number;
   totalPages?: number;
@@ -17,6 +18,7 @@ interface VersionsTableProps {
 
 export const VersionsTable = ({
   versions,
+  selectedVersionId,
   isLoading = false,
   currentPage = 1,
   totalPages = 1,
@@ -74,11 +76,28 @@ export const VersionsTable = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-            {versions.map((version) => (
-              <tr key={version.id} className="transition-colors duration-150 hover:bg-slate-50/70 dark:hover:bg-slate-800/60">
+            {versions.map((version) => {
+              const isSelected = selectedVersionId === version.id;
+
+              return (
+              <tr
+                key={version.id}
+                className={`transition-colors duration-150 hover:bg-slate-50/70 dark:hover:bg-slate-800/60 ${
+                  isSelected
+                    ? 'bg-blue-50/80 dark:bg-blue-950/30 ring-1 ring-inset ring-blue-200 dark:ring-blue-800/70'
+                    : ''
+                }`}
+              >
                 <td className="px-6 py-4.5 text-sm text-slate-600 dark:text-slate-400">#{version.id}</td>
                 <td className="px-6 py-4.5 text-sm">
-                  <span className="font-mono font-bold text-blue-600">v{version.versionNumber}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-blue-600 dark:text-blue-300">v{version.versionNumber}</span>
+                    {isSelected && (
+                      <span className="inline-flex items-center rounded-full border border-blue-300 bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800 dark:border-blue-700 dark:bg-blue-900/60 dark:text-blue-200">
+                        Viewing
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4.5 text-sm text-slate-900 dark:text-slate-50 max-w-xs truncate">
                   {version.message || '—'}
@@ -125,7 +144,8 @@ export const VersionsTable = ({
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>
