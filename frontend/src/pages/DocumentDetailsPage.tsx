@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { useDocumentDetails, useDocumentVersions, usePublishedVersion } from '@/hooks/useDocumentDetails';
+import { useDocument, usePublishedVersion, useVersions } from '@/hooks';
 import {
   usePermission,
   useSubmitVersion,
@@ -14,12 +14,13 @@ import { DocumentMetadataCard } from '@/components/documents/DocumentMetadataCar
 import { PublishedVersionSection } from '@/components/documents/PublishedVersionSection';
 import { VersionsTable } from '@/components/documents/VersionsTable';
 import { DocumentActions } from '@/components/documents/DocumentActions';
-import { Alert, SectionCard, Skeleton } from '@/components/ui';
-import { DocumentVersion } from '@/types/version';
+import { Alert, Button, SectionCard, Skeleton, StatusBadge } from '@/components/ui';
+import { DocumentVersion, VersionStatus } from '@/types/version';
 import { UserRole } from '@/types/auth';
-import { pdfApi, versionsApi } from '@/api';
+import { documentService, getApiErrorMessage, pdfApi } from '@/api';
 import { downloadBlob, sanitizeFilename } from '@/utils/download';
 import { useToast } from '@/contexts/ToastContext';
+import { ArrowLeft } from 'lucide-react';
 
 type ConfirmationAction = {
   title: string;
@@ -32,7 +33,7 @@ type ConfirmationAction = {
 export const DocumentDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { can } = usePermission();
   const { user } = useAuth();
   const toast = useToast();
@@ -61,24 +62,52 @@ export const DocumentDetailsPage = () => {
     data: document,
     isLoading: isLoadingDocument,
     error: documentError,
-  } = useDocumentDetails(documentId, isReaderOnly);
+    refetch: refetchDocument,
+  } = useDocument(documentId, isReaderOnly);
 
   // Load versions
   const {
     data: versionsData,
     isLoading: isLoadingVersions,
     error: versionsError,
-  } = useDocumentVersions(documentId, page, 10, !isReaderOnly);
+    refetch: refetchVersions,
+  } = useVersions(documentId, page, 10, !isReaderOnly);
 
   // Load published version
   const {
     data: publishedVersion,
     isLoading: isLoadingPublished,
+    error: publishedVersionError,
+    refetch: refetchPublished,
   } = usePublishedVersion(documentId, document?.publishedVersionId != null);
 
   const requestedVersionId = Number(searchParams.get('versionId') || 0);
+  const navigationSource = searchParams.get('source');
   const versions = versionsData?.content || [];
   const totalPages = versionsData?.totalPages || 1;
+  const reviewerVisibleStatuses = useMemo(
+    () => [VersionStatus.IN_REVIEW, VersionStatus.PUBLISHED],
+    []
+  );
+
+  const visibleVersions = useMemo(() => {
+    if (isAdmin) {
+      return versions;
+    }
+
+    if (isReviewer) {
+      return versions.filter((version) => reviewerVisibleStatuses.includes(version.status));
+    }
+
+    if (isAuthor && user?.username) {
+      return versions.filter(
+        (version) =>
+          version.createdByUsername === user.username || version.status === VersionStatus.PUBLISHED
+      );
+    }
+
+    return versions;
+  }, [isAdmin, isReviewer, isAuthor, user?.username, versions]);
 
   useEffect(() => {
     hasAppliedQueryVersion.current = false;
@@ -88,7 +117,7 @@ export const DocumentDetailsPage = () => {
     if (hasAppliedQueryVersion.current) return;
     if (!requestedVersionId || !documentId || isReaderOnly || isLoadingVersions) return;
 
-    const matchingVersion = versions.find((version) => version.id === requestedVersionId);
+    const matchingVersion = visibleVersions.find((version) => version.id === requestedVersionId);
 
     if (matchingVersion) {
       setSelectedVersion(matchingVersion);
@@ -98,17 +127,25 @@ export const DocumentDetailsPage = () => {
 
     const fetchRequestedVersion = async () => {
       try {
-        const requestedVersion = await versionsApi.getById(documentId, requestedVersionId);
+        const requestedVersion = await documentService.getVersionById(documentId, requestedVersionId);
+
+        if (isReviewer && !reviewerVisibleStatuses.includes(requestedVersion.status)) {
+          setWorkflowError('This version is not visible for reviewer role.');
+          return;
+        }
+
         setSelectedVersion(requestedVersion);
-      } catch {
-        // Graceful fallback: keep current/default selection behavior.
+      } catch (error: unknown) {
+        const message = getApiErrorMessage(error, 'Unable to load the requested version');
+        setWorkflowError(message);
+        toast.error(message, 'Version loading failed');
       } finally {
         hasAppliedQueryVersion.current = true;
       }
     };
 
     fetchRequestedVersion();
-  }, [requestedVersionId, documentId, isReaderOnly, isLoadingVersions, versions]);
+  }, [requestedVersionId, documentId, isReaderOnly, isLoadingVersions, visibleVersions, toast, isReviewer, reviewerVisibleStatuses]);
 
   const documentTitle = document?.title ?? 'document';
 
@@ -124,8 +161,8 @@ export const DocumentDetailsPage = () => {
       const blob = await pdfApi.getPublishedVersionPdf(documentId);
       downloadBlob(blob, `${sanitizeFilename(documentTitle)}-published-v${publishedVersion.versionNumber}.pdf`);
       toast.success('Published PDF downloaded.');
-    } catch (error: any) {
-      const message = error?.message || 'Failed to download published version PDF';
+    } catch (error: unknown) {
+      const message = getApiErrorMessage(error, 'Failed to download published version PDF');
       setWorkflowError(message);
       toast.error(message, 'Download failed');
     } finally {
@@ -139,8 +176,8 @@ export const DocumentDetailsPage = () => {
       const blob = await pdfApi.getVersionPdf(documentId, version.id);
       downloadBlob(blob, `${sanitizeFilename(documentTitle)}-v${version.versionNumber}.pdf`);
       toast.success(`Version v${version.versionNumber} downloaded.`);
-    } catch (error: any) {
-      const message = error?.message || 'Failed to download version PDF';
+    } catch (error: unknown) {
+      const message = getApiErrorMessage(error, 'Failed to download version PDF');
       setWorkflowError(message);
       toast.error(message, 'Download failed');
     } finally {
@@ -148,14 +185,31 @@ export const DocumentDetailsPage = () => {
     }
   };
 
-  const runWorkflowAction = async (action: () => Promise<unknown>, successMessage: string) => {
+  const runWorkflowAction = async (
+    action: () => Promise<unknown>,
+    successMessage: string,
+    versionId?: number
+  ) => {
     try {
       setWorkflowError('');
       await action();
-      clearSelectedVersion();
+
+      await Promise.all([refetchDocument(), refetchVersions(), refetchPublished()]);
+
+      if (versionId) {
+        try {
+          const refreshedVersion = await documentService.getVersionById(documentId, versionId);
+          setSelectedVersion(refreshedVersion);
+        } catch {
+          clearSelectedVersion();
+        }
+      } else {
+        clearSelectedVersion();
+      }
+
       toast.success(successMessage);
-    } catch (error: any) {
-      const message = error?.response?.data?.message || error?.message || 'An error occurred';
+    } catch (error: unknown) {
+      const message = getApiErrorMessage(error);
       setWorkflowError(message);
       toast.error(message, 'Action failed');
     }
@@ -171,6 +225,12 @@ export const DocumentDetailsPage = () => {
   };
 
   const selectedVersionId = selectedVersion?.id;
+  const isActionInFlight =
+    submitMutation.isPending ||
+    approveMutation.isPending ||
+    rejectMutation.isPending ||
+    publishMutation.isPending ||
+    rollbackMutation.isPending;
 
   if (!documentId || isNaN(documentId)) {
     return (
@@ -241,8 +301,33 @@ export const DocumentDetailsPage = () => {
               ? 'rollback'
               : undefined;
 
+  const isAuthorViewingForeignDocument =
+    !!isAuthor &&
+    !!user?.username &&
+    !!document.ownerUsername &&
+    user.username !== document.ownerUsername;
+
+  const createVersionDisabledReason = isAuthorViewingForeignDocument
+    ? 'Authors can create versions only for their own documents'
+    : undefined;
+
   return (
     <div className="space-y-6">
+      {navigationSource === 'review-queue' && (
+        <div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate('/review-queue')}
+            className="inline-flex items-center gap-2"
+          >
+            <ArrowLeft size={14} />
+            Back to Review Queue
+          </Button>
+        </div>
+      )}
+
       {workflowError && (
         <Alert
           type="error"
@@ -255,11 +340,55 @@ export const DocumentDetailsPage = () => {
       {/* Document Metadata */}
       <DocumentMetadataCard document={document} />
 
+      <SectionCard>
+        <div className="p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Version Context
+          </h2>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <span className="text-sm text-slate-700 dark:text-slate-200">Current published:</span>
+            {publishedVersion ? (
+              <>
+                <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  v{publishedVersion.versionNumber}
+                </span>
+                <StatusBadge status={publishedVersion.status} />
+              </>
+            ) : (
+              <span className="text-sm text-slate-500 dark:text-slate-400">No published version</span>
+            )}
+          </div>
+          {selectedVersion && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-3 dark:border-slate-700">
+              <span className="text-sm text-slate-700 dark:text-slate-200">Viewing:</span>
+              <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+                v{selectedVersion.versionNumber}
+              </span>
+              <StatusBadge status={selectedVersion.status} />
+              {publishedVersion && selectedVersion.id !== publishedVersion.id && (
+                <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                  Not the published version
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
       {versionsError && (
         <Alert
           type="error"
           title="Failed to load versions"
           message={versionsError instanceof Error ? versionsError.message : 'Could not load document versions'}
+          dismissible={false}
+        />
+      )}
+
+      {publishedVersionError && (
+        <Alert
+          type="error"
+          title="Failed to load published version"
+          message={publishedVersionError instanceof Error ? publishedVersionError.message : 'Could not load published version'}
           dismissible={false}
         />
       )}
@@ -280,7 +409,8 @@ export const DocumentDetailsPage = () => {
             <div>
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">Version History</h2>
               <VersionsTable
-                versions={versions}
+                versions={visibleVersions}
+                selectedVersionId={selectedVersionId}
                 isLoading={isLoadingVersions}
                 currentPage={page}
                 totalPages={totalPages}
@@ -289,12 +419,13 @@ export const DocumentDetailsPage = () => {
                 downloadingVersionId={downloadingVersionId}
                 onViewVersion={(version) => {
                   setSelectedVersion(version);
-                  // TODO: Navigate to version details view
-                  console.log('View version:', version.id);
+                  const nextParams = new URLSearchParams(searchParams);
+                  nextParams.set('versionId', String(version.id));
+                  setSearchParams(nextParams, { replace: true });
                 }}
                 onCompare={(version) => {
                   const fallbackVersionId =
-                    publishedVersion?.id ?? versions.find((candidate) => candidate.id !== version.id)?.id ?? version.id;
+                    publishedVersion?.id ?? visibleVersions.find((candidate) => candidate.id !== version.id)?.id ?? version.id;
                   navigate(
                     `/documents/${documentId}/compare?leftVersionId=${fallbackVersionId}&rightVersionId=${version.id}`
                   );
@@ -321,12 +452,15 @@ export const DocumentDetailsPage = () => {
             }}
             isDownloadingPDF={downloadingPublishedPdf}
             loadingAction={loadingAction}
+            isActionInFlight={isActionInFlight}
+            isCreateVersionDisabled={isAuthorViewingForeignDocument}
+            createVersionDisabledReason={createVersionDisabledReason}
             onCreateVersion={!isReaderOnly ? () => navigate(`/documents/${documentId}/versions/create`) : undefined}
             onSubmitReview={!isReaderOnly ? (versionId) => {
-              runWorkflowAction(() => submitMutation.mutateAsync(versionId), 'Version submitted for review.');
+              runWorkflowAction(() => submitMutation.mutateAsync(versionId), 'Version submitted for review.', versionId);
             } : undefined}
             onApprove={!isReaderOnly ? (versionId) => {
-              runWorkflowAction(() => approveMutation.mutateAsync(versionId), 'Version approved.');
+              runWorkflowAction(() => approveMutation.mutateAsync(versionId), 'Version approved.', versionId);
             } : undefined}
             onReject={!isReaderOnly ? (versionId) => {
               openConfirmation({
@@ -334,7 +468,7 @@ export const DocumentDetailsPage = () => {
                 message: 'Are you sure you want to reject this version? This action can affect the review workflow.',
                 confirmLabel: 'Reject',
                 confirmVariant: 'danger',
-                run: () => runWorkflowAction(() => rejectMutation.mutateAsync(versionId), 'Version rejected.'),
+                run: () => runWorkflowAction(() => rejectMutation.mutateAsync(versionId), 'Version rejected.', versionId),
               });
             } : undefined}
             onPublish={!isReaderOnly ? (versionId) => {
@@ -343,7 +477,7 @@ export const DocumentDetailsPage = () => {
                 message: 'Are you sure you want to publish this version? The published version will become visible as the active document version.',
                 confirmLabel: 'Publish',
                 confirmVariant: 'primary',
-                run: () => runWorkflowAction(() => publishMutation.mutateAsync(versionId), 'Version published successfully.'),
+                run: () => runWorkflowAction(() => publishMutation.mutateAsync(versionId), 'Version published successfully.', versionId),
               });
             } : undefined}
             onRollback={!isReaderOnly ? (versionId) => {
@@ -352,7 +486,7 @@ export const DocumentDetailsPage = () => {
                 message: 'Are you sure you want to rollback to this version? This will change the document back to the selected version.',
                 confirmLabel: 'Rollback',
                 confirmVariant: 'danger',
-                run: () => runWorkflowAction(() => rollbackMutation.mutateAsync(versionId), 'Rollback completed.'),
+                run: () => runWorkflowAction(() => rollbackMutation.mutateAsync(versionId), 'Rollback completed.', versionId),
               });
             } : undefined}
             onDownloadPDF={publishedVersion ? handleDownloadPublishedPdf : undefined}

@@ -68,7 +68,7 @@ public class SecurityConfig {
                         // =========================
 
                         // Legacy endpoints (frontend compatibility)
-                        .requestMatchers("/auth/login", "/auth/register").permitAll()
+                        .requestMatchers("/auth/login", "/auth/register", "/api/auth/login", "/api/auth/register").permitAll()
 
                         // Versioned API endpoints
                         .requestMatchers(HttpMethod.POST, API_V1_PREFIX + "/tokens").permitAll()
@@ -87,7 +87,7 @@ public class SecurityConfig {
                         // AUTHENTICATED PROFILE
                         // =========================
 
-                        .requestMatchers(HttpMethod.GET, "/auth/me", API_V1_PREFIX + "/users/me")
+                        .requestMatchers(HttpMethod.GET, "/auth/me", "/api/auth/me", API_V1_PREFIX + "/users/me")
                         .authenticated()
 
                         // =========================
@@ -158,6 +158,9 @@ public class SecurityConfig {
                                 API_V1_PREFIX + "/documents/*/archive"
                         )
                         .hasAnyRole("AUTHOR", "ADMIN")
+
+                        .requestMatchers(HttpMethod.DELETE, "/documents/*", API_V1_PREFIX + "/documents/*")
+                        .hasRole("ADMIN")
 
                         // =========================
                         // VERSIONS

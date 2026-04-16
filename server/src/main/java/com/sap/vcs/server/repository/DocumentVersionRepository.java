@@ -15,7 +15,6 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
 
     Optional<DocumentVersion> findTopByDocumentOrderByVersionNumberDesc(Document document);
 
-    boolean existsByDocumentAndStatus(Document document, VersionStatus status);
 
     boolean existsByDocumentAndStatusIn(Document document, Collection<VersionStatus> statuses);
 }

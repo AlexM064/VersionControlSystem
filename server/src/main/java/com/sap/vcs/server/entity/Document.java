@@ -27,7 +27,7 @@ public class Document {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private DocumentStatus status = DocumentStatus.ACTIVE;
+    private DocumentStatus status = DocumentStatus.DRAFT;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -45,11 +45,11 @@ export const PublishedVersionSection = ({
   }
 
   return (
-    <SectionCard className="border-green-200 bg-gradient-to-br from-green-50 to-white dark:border-slate-700 dark:bg-slate-900 dark:from-slate-900 dark:to-slate-900 dark:shadow-sm dark:ring-1 dark:ring-slate-800/80">
+    <SectionCard className="border-green-200 bg-gradient-to-br from-green-50 to-white dark:border-slate-700 dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-800 dark:shadow-sm dark:ring-1 dark:ring-slate-700/80">
       <div className="p-6">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <FileText size={20} className="text-green-600" />
+            <FileText size={20} className="text-green-600 dark:text-green-400" />
             <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Published Version</h2>
           </div>
           <div className="flex items-center gap-2">

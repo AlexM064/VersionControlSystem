@@ -1,5 +1,7 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const rawApiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+export const API_BASE_URL = rawApiBaseUrl.replace(/\/api\/?$/, '');
 export const API_TIMEOUT = 60000; // 60 seconds
 
 // Local Storage Keys

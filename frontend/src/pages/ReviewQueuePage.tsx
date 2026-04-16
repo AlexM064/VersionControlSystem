@@ -108,7 +108,11 @@ export const ReviewQueuePage = () => {
                         type="button"
                         variant="primary"
                         size="sm"
-                        onClick={() => navigate(`/documents/${item.documentId}?versionId=${item.versionId}`)}
+                        onClick={() =>
+                          navigate(
+                            `/documents/${item.documentId}?versionId=${item.versionId}&source=review-queue`
+                          )
+                        }
                       >
                         Open Document
                       </Button>

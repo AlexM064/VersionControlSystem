@@ -10,21 +10,21 @@ interface StatusBadgeProps {
 const statusVariantMap: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
   [DocumentStatus.ACTIVE]: 'success',
   [DocumentStatus.ARCHIVED]: 'warning',
-  DRAFT: 'info',
-  IN_REVIEW: 'warning',
-  APPROVED: 'success',
-  REJECTED: 'error',
-  PUBLISHED: 'success',
+  [VersionStatus.DRAFT]: 'info',
+  [VersionStatus.IN_REVIEW]: 'warning',
+  [VersionStatus.APPROVED]: 'success',
+  [VersionStatus.REJECTED]: 'error',
+  [VersionStatus.PUBLISHED]: 'success',
 };
 
 const statusLabelMap: Record<string, string> = {
   [DocumentStatus.ACTIVE]: 'Active',
   [DocumentStatus.ARCHIVED]: 'Archived',
-  DRAFT: 'Draft',
-  IN_REVIEW: 'In Review',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  PUBLISHED: 'Published',
+  [VersionStatus.DRAFT]: 'Draft',
+  [VersionStatus.IN_REVIEW]: 'In Review',
+  [VersionStatus.APPROVED]: 'Approved',
+  [VersionStatus.REJECTED]: 'Rejected',
+  [VersionStatus.PUBLISHED]: 'Published',
 };
 
 export const StatusBadge = ({ status, className = '' }: StatusBadgeProps) => {

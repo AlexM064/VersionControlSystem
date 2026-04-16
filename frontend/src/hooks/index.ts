@@ -4,6 +4,8 @@ export * from './useErrorHandler';
 export * from './useDocuments';
 export * from './useDocumentMutations';
 export * from './useDocumentDetails';
+export * from './useDocument';
+export * from './useVersions';
 export * from './useDashboardStats';
 export * from './useVersionMutations';
 export * from './useVersionComparison';
