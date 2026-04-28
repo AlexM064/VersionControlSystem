@@ -1,107 +1,213 @@
 # VersionControlSystem
 
-## Local Authentication And Authorization Testing
+Софтуерен проект за управление на документи, версии и approval workflow. Репозиторието съдържа Spring Boot backend и React + TypeScript frontend.
 
-### Local Test Accounts
+## Кратко описание
 
-| Username | Password | Role | Status |
-| --- | --- | --- | --- |
-| `admin.local` | `admin123` | `ADMIN` | Active |
-| `author.local` | `author123` | `AUTHOR` | Active |
-| `reader.local` | `reader123` | `READER` | Active |
-| `reviewer.local` | `reviewer123` | `REVIEWER` | Active |
-| `inactive.local` | `inactive123` | `AUTHOR` | Inactive |
+Проектът реализира система за създаване, редакция, версиониране, преглед, сравняване, одобряване и публикуване на документи. Backend-ът е изграден със Spring Boot, Spring Security и JWT, а frontend-ът използва React, Vite, TypeScript и Tailwind CSS.
 
-These users are seeded by the Flyway migration at `server/src/main/resources/db/migration/V8__seed_local_auth_users.sql`.
+## Цел на проекта
 
-### Security Test Coverage
+Целта е да демонстрира цялостен модел за управление на документи с роли, permissions, workflow за review/approval и проследимост чрез audit logs.
 
-Current security-related tests:
+## Основни функционалности
 
-- `server/src/test/java/com/sap/vcs/server/security/SecurityAuthenticationIntegrationTest.java`: proves the real Basic Auth flow works with the configured `PasswordEncoder`, including valid login, wrong password, inactive user, and insufficient-role behavior
-- `server/src/test/java/com/sap/vcs/server/controller/DocumentControllerAuthorizationTest.java`: proves controller-level authorization for document endpoints, including allowed role, `403 Forbidden` for a disallowed authenticated role, and `401 Unauthorized` for unauthenticated requests
-- `server/src/test/java/com/sap/vcs/server/controller/DocumentVersionControllerAuthorizationTest.java`: proves controller-level authorization for document version endpoints with the same `200` / `403` / `401` coverage pattern
-- `server/src/test/java/com/sap/vcs/server/controller/ApprovalControllerAuthorizationTest.java`: proves controller-level authorization for `approve` and `reject` workflow endpoints
-- `server/src/test/java/com/sap/vcs/server/controller/VersionWorkflowControllerAuthorizationTest.java`: proves controller-level authorization for `publish` and `rollback` workflow endpoints
-- `server/src/test/java/com/sap/vcs/server/service/ServiceMethodSecurityTest.java`: proves the critical `@PreAuthorize` rules at service level for create, approve, reject, publish, and rollback operations. It exists as a second safety net behind controller authorization tests, so business-critical methods stay protected even if a route changes later.
+- Регистрация и логин с JWT токен
+- Управление на потребители и роли
+- Създаване и редакция на документи
+- Ownership логика за автор и администратор
+- Създаване и преглед на версии
+- Сравняване на версии
+- Approval, reject, publish и rollback workflow
+- Архивиране и публикуване на документи
+- PDF export на published и конкретни версии
+- Audit logging на основни действия
 
-What these tests verify:
+## Използвани технологии
 
-- `401 Unauthorized`: authentication failed because credentials are missing, invalid, or the account is inactive
-- `403 Forbidden`: authentication succeeded, but that role is not allowed to use the endpoint or service method
-- Controller-level authorization tests verify endpoint access rules
-- Method-security tests verify `@PreAuthorize` enforcement at service level
+### Backend
 
-### Run Tests Locally
+- Java 21
+- Spring Boot 3.5.11
+- Spring Web
+- Spring Security
+- Spring Data JPA / Hibernate
+- Flyway
+- PostgreSQL
+- JWT чрез `jjwt`
+- OpenAPI / Swagger чрез `springdoc-openapi`
+- PDF export чрез `openhtmltopdf`
+- Unit, integration и security tests със Spring Boot Test и Mockito
 
-Use the Maven wrapper from the `server` folder.
+### Frontend
 
-- Windows PowerShell: `.\mvnw.cmd ...`
-- Shells that use `./`: `./mvnw ...`
+- React 18
+- TypeScript
+- Vite
+- React Router
+- Axios
+- TanStack React Query
+- React Hook Form
+- Zod
+- Tailwind CSS
 
-- Run the full project test suite:
-  `.\mvnw.cmd test`
-- Run the current security/auth test suite:
-  `.\mvnw.cmd "-Dtest=SecurityAuthenticationIntegrationTest,DocumentControllerAuthorizationTest,DocumentVersionControllerAuthorizationTest,ApprovalControllerAuthorizationTest,VersionWorkflowControllerAuthorizationTest,ServiceMethodSecurityTest" test`
-- Run only the authentication foundation test:
-  `.\mvnw.cmd "-Dtest=SecurityAuthenticationIntegrationTest" test`
-- Run only the document controller authorization tests:
-  `.\mvnw.cmd "-Dtest=DocumentControllerAuthorizationTest,DocumentVersionControllerAuthorizationTest" test`
-- Run only the workflow controller authorization tests:
-  `.\mvnw.cmd "-Dtest=ApprovalControllerAuthorizationTest,VersionWorkflowControllerAuthorizationTest" test`
-- Run only the service method-security tests:
-  `.\mvnw.cmd "-Dtest=ServiceMethodSecurityTest" test`
-- Run a single test class while debugging:
-  `.\mvnw.cmd "-Dtest=DocumentControllerAuthorizationTest" test`
+## Архитектура на проекта
 
-### Manual Verification With Postman
+Backend модулът следва стандартна layered структура:
 
-Use `Authorization -> Basic Auth` in Postman and pick one of the local test accounts above.
+- `controller` - REST endpoints и входни точки на API-то
+- `service` - business logic, workflow правила и security annotations
+- `repository` - JPA репозитории и заявки към базата
+- `entity` - JPA entity класове и домейн модел
+- `dto` - request/response модели за API контракт
+- `security` - JWT, `UserDetails`, filters и handlers
+- `exception` - централизиран error handling
+- `config` - OpenAPI конфигурация
+- `specification` - JPA specifications за филтриране
 
-Recommended checks:
+Подробна документация има в:
 
-- Method: `GET`
-  Endpoint: `http://localhost:8080/documents`
-  Username/password: `author.local / author123`
-  Expected status: `200 OK`
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)
+- [docs/DATABASE_MODEL.md](docs/DATABASE_MODEL.md)
+- [docs/SECURITY.md](docs/SECURITY.md)
+- [docs/TESTING.md](docs/TESTING.md)
 
-- Method: `GET`
-  Endpoint: `http://localhost:8080/documents`
-  Username/password: `reader.local / reader123`
-  Expected status: `403 Forbidden`
+## Описание на базата данни
 
-- Method: `GET`
-  Endpoint: `http://localhost:8080/documents`
-  Username/password: `author.local / wrongpass`
-  Expected status: `401 Unauthorized`
+Основните таблици са `users`, `roles`, `user_roles`, `documents`, `document_versions`, `approvals` и `audit_logs`. Моделът поддържа:
 
-- Method: `GET`
-  Endpoint: `http://localhost:8080/documents`
-  Username/password: `inactive.local / inactive123`
-  Expected status: `401 Unauthorized`
+- many-to-many връзка между потребители и роли
+- one-to-many връзка между документ и версии
+- one-to-many връзка между версия и approvals
+- one-to-many връзка между документ и неговия owner
+- published version reference в документа
 
-- Method: `POST`
-  Endpoint: `http://localhost:8080/versions/1/publish`
-  Username/password: `reviewer.local / reviewer123`
-  Expected status: `200 OK` when the target version satisfies the publish business rules
+Повече детайли: [docs/DATABASE_MODEL.md](docs/DATABASE_MODEL.md)
 
-- Method: `POST`
-  Endpoint: `http://localhost:8080/versions/1/publish`
-  Username/password: `author.local / author123`
-  Expected status: `403 Forbidden`
+## Основни функционалности по домейни
 
-### Final Security Hardening Note
+### Автентикация и потребители
 
-During development, the fallback rule may remain:
+- `POST /auth/login` и `POST /api/v1/tokens` издават JWT
+- `POST /auth/register` и `POST /api/v1/users` създават нов потребител с роля `READER`
+- `GET /auth/me` и `GET /api/v1/users/me` връщат текущия authenticated user
+- `PATCH /api/v1/users/{id}/role` и legacy `PATCH /users/{id}/role` сменят роля само за `ADMIN`
 
-`anyRequest().hasRole("ADMIN")`
+### Документи и версии
 
-As a final security-hardening step, this should be changed to:
+- `AUTHOR` и `ADMIN` могат да създават и редактират документи
+- `AUTHOR` и `ADMIN` могат да създават версии и да ги submit-ват за review
+- `REVIEWER` и `ADMIN` могат да approve/reject/publish/rollback версии
+- `READER` има достъп до published съдържание
 
-`anyRequest().denyAll()`
+### PDF export
 
-Do this only after:
+- system-ът генерира PDF за published версията на документ
+- генерира PDF и за конкретна версия, когато е налична и принадлежи на съответния документ
 
-- the explicit authorization matrix is fully implemented
-- authorization tests are in place
-- all important endpoints are explicitly covered so no route still depends on the fallback rule
+### Audit log
+
+- основните операции записват audit записи в `audit_logs`
+- API за преглед на audit log не е наличен
+
+## Security документация
+
+Проектът използва stateless JWT bearer authentication.
+
+- Public endpoints: register, login, token issuance, Swagger UI и OpenAPI docs, както и OPTIONS requests
+- Protected endpoints: всички останали API routes
+- Роли: `ADMIN`, `AUTHOR`, `REVIEWER`, `READER`
+- Подробности за auth flow, permissions и protected/public endpoints: [docs/SECURITY.md](docs/SECURITY.md)
+
+## Workflow документация
+
+Ключовите сценарии са описани в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SECURITY.md](docs/SECURITY.md) и [docs/DATABASE_MODEL.md](docs/DATABASE_MODEL.md):
+
+- автор създава документ
+- автор редактира свой документ
+- автор създава версия и я изпраща за review
+- reviewer одобрява или отхвърля версия
+- reviewer публикува approved версия
+- reader преглежда published документи
+- admin управлява роли и има пълен достъп
+
+## Тестване
+
+Проектът съдържа:
+
+- controller authorization tests
+- security integration tests
+- service method security tests
+- unit tests за auth, document, version, approval, PDF export и user логика
+- specification tests
+- context load smoke test
+
+Подробности и команди: [docs/TESTING.md](docs/TESTING.md)
+
+## Стартиране на проекта
+
+### Изисквания
+
+- Java 21
+- Maven wrapper или Maven
+- PostgreSQL 15 или съвместима версия
+- Node.js 18+ за frontend-а
+
+### Локална настройка
+
+- Backend default datasource: `jdbc:postgresql://localhost:5433/vcs_sap_db`
+- Default user: `postgres`
+- Default password: `password`
+- JWT secret и expiration могат да се override-нат чрез environment variables
+- Frontend API URL: `VITE_API_URL=http://localhost:8080/api`
+
+### Стартиране през Maven
+
+1. Стартирайте PostgreSQL чрез `docker-compose.yml` или собствен инстанс.
+2. Отворете папката `server`.
+3. Изпълнете `.\mvnw.cmd spring-boot:run` на Windows или `./mvnw spring-boot:run` в Unix shell.
+
+### Стартиране през IDE
+
+1. Импортирайте `server/pom.xml` като Maven проект.
+2. Стартирайте `com.sap.vcs.server.ServerApplication`.
+3. Уверете се, че PostgreSQL и environment variables са налични.
+
+### Достъп до API
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI spec: `http://localhost:8080/v3/api-docs`
+- Health/test endpoint: `GET /test`
+
+### Environment variables
+
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SERVER_PORT`
+- `APP_JWT_SECRET`
+- `APP_JWT_EXPIRATION_MS`
+- `VITE_API_URL` за frontend-а
+
+## Git workflow
+
+В репото присъстват `main` и `develop`, а текущият работен клон е `develop`.
+
+- Работете в отделен `feature/*` клон
+- Синхронизирайте редовно с `develop`
+- Commit-вайте малки и смислени промени
+- Отваряйте pull request към `develop`
+- При merge conflicts решавайте локално, без да презаписвате чужди промени
+
+## Заключение
+
+Проектът реализира пълна система за document version control с роли, JWT security, review workflow, PDF export и audit logging. Като бъдещи подобрения могат да се добавят refresh token flow, audit log API, password reset, attachment storage и по-богат approval metadata workflow.
+
+## Подробна документация
+
+- [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/DATABASE_MODEL.md](docs/DATABASE_MODEL.md)
+- [docs/SECURITY.md](docs/SECURITY.md)
+- [docs/TESTING.md](docs/TESTING.md)
